@@ -2,7 +2,7 @@
 
 This application demonstrates a real-time, AI-driven system for assessing auto insurance claims, providing damage detection, cost estimation, and automated approval workflows.
 
-![Insurance Claims Assessment]((https://i.imgur.com/vk22HFx.jpeg)
+![Insurance Claims Assessment](https://i.imgur.com/vk22HFx.jpeg)
 
 ## 🚀 Features
 
