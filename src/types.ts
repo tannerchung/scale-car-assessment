@@ -55,6 +55,17 @@ export interface HistoricalComparison {
   similarClaims: number;
 }
 
+export interface ClaimImage {
+  url: string;
+  type: 'damage' | 'overview' | 'detail';
+  timestamp: string;
+  metadata?: {
+    width: number;
+    height: number;
+    size: number;
+  };
+}
+
 export interface AssessmentResult {
   id: string;
   timestamp: string;
@@ -64,6 +75,7 @@ export interface AssessmentResult {
   historicalComparison: HistoricalComparison;
   status: ClaimStatus;
   imageUrl: string;
+  images?: ClaimImage[]; // Array of claim images
   aiConfidence: {
     level: ConfidenceLevel;
     score: number;

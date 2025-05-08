@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, ArrowUpDown, ArrowRight, FileText, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Gauge, Eye } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpDown, ArrowRight, FileText, Clock, Loader2, CheckCircle, XCircle, AlertTriangle, Gauge, Eye, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
-import { ClaimStatus } from '../types';
+import { ClaimStatus, AssessmentResult } from '../types';
 import { useClaims } from '../context/ClaimsContext';
+import ReviewWizard from '../components/review/ReviewWizard';
 
 interface DashboardProps {
   showAllClaims?: boolean;
@@ -12,7 +13,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialStatusFilter }) => {
   const navigate = useNavigate();
-  const { claims } = useClaims();
+  const { claims, updateClaim } = useClaims();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ClaimStatus | 'all'>(initialStatusFilter || 'all');
   const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
@@ -20,9 +21,15 @@ const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialSta
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortField, setSortField] = useState<'date' | 'cost' | 'confidence'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [selectedClaim, setSelectedClaim] = useState<AssessmentResult | null>(null);
 
   const handleStatusClick = (status: ClaimStatus) => {
     navigate('/claims', { state: { statusFilter: status } });
+  };
+
+  const handleReviewComplete = (updatedClaim: AssessmentResult) => {
+    updateClaim(updatedClaim.id, updatedClaim);
+    setSelectedClaim(null);
   };
 
   const getStatusColor = (status: ClaimStatus) => {
@@ -92,7 +99,6 @@ const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialSta
 
   const displayedClaims = showAllClaims ? filteredClaims : filteredClaims.slice(0, 5);
 
-  // Calculate statistics
   const stats = {
     total: claims.length,
     needsReview: needsReviewCount,
@@ -245,130 +251,159 @@ const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialSta
       <div className="mt-8 bg-white shadow-sm rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           {showAllClaims && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search claims..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10"
-                    />
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  </div>
+            <div className="space-y-6">
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Search className="h-5 w-5 text-gray-400" />
                 </div>
+                <input
+                  type="text"
+                  placeholder="Search by claim ID, vehicle make, or model..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full rounded-lg border-gray-300 pl-10 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as ClaimStatus | 'all')}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10"
+                    className="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   >
                     <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
                     <option value="processing">Processing</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                   </select>
-                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
 
                 <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">AI Confidence</label>
                   <select
                     value={confidenceFilter}
                     onChange={(e) => setConfidenceFilter(e.target.value as 'all' | 'high' | 'medium' | 'low')}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10"
+                    className="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   >
-                    <option value="all">All Confidence Levels</option>
-                    <option value="high">High Confidence (85%+)</option>
-                    <option value="medium">Medium Confidence (70-85%)</option>
-                    <option value="low">Low Confidence (&lt;70%)</option>
+                    <option value="all">All Levels</option>
+                    <option value="high">High (85%+)</option>
+                    <option value="medium">Medium (70-85%)</option>
+                    <option value="low">Low (&lt;70%)</option>
                   </select>
-                  <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
 
                 <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Review Type</label>
                   <select
                     value={reviewFilter}
                     onChange={(e) => setReviewFilter(e.target.value as 'all' | 'needs_review' | 'auto')}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pl-10"
+                    className="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   >
-                    <option value="all">All Claims</option>
+                    <option value="all">All Types</option>
                     <option value="needs_review">Needs Review</option>
                     <option value="auto">Auto-Approved</option>
                   </select>
-                  <Eye className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
 
-                <div className="flex gap-2 items-center">
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      placeholder="Min $"
-                      value={priceRange.min}
-                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    />
-                  </div>
-                  <span className="text-gray-500">-</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      placeholder="Max $"
-                      value={priceRange.max}
-                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <span className="text-gray-500 sm:text-sm">$</span>
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={priceRange.min}
+                        onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                        className="block w-full rounded-lg border-gray-300 pl-7 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    <span className="text-gray-500">-</span>
+                    <div className="relative flex-1">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <span className="text-gray-500 sm:text-sm">$</span>
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={priceRange.max}
+                        onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                        className="block w-full rounded-lg border-gray-300 pl-7 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (sortField === 'date') {
-                        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('date');
-                        setSortDirection('desc');
-                      }
-                    }}
-                    className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
-                    Date
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (sortField === 'cost') {
-                        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('cost');
-                        setSortDirection('desc');
-                      }
-                    }}
-                    className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
-                    Cost
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (sortField === 'confidence') {
-                        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('confidence');
-                        setSortDirection('desc');
-                      }
-                    }}
-                    className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
-                    AI Score
-                  </button>
-                </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    if (sortField === 'date') {
+                      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortField('date');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${
+                    sortField === 'date'
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Date
+                  {sortField === 'date' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    if (sortField === 'cost') {
+                      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortField('cost');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${
+                    sortField === 'cost'
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Cost
+                  {sortField === 'cost' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    if (sortField === 'confidence') {
+                      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortField('confidence');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${
+                    sortField === 'confidence'
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <Gauge className="h-4 w-4 mr-2" />
+                  AI Score
+                  {sortField === 'confidence' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
               </div>
             </div>
           )}
@@ -455,12 +490,22 @@ const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialSta
                       ${claim.repairCost.total.toLocaleString()}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        to={`/claims/${claim.id}`}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View Details
-                      </Link>
+                      <div className="flex items-center justify-end space-x-2">
+                        {claim.status === 'pending' && claim.aiConfidence.needsHumanReview && (
+                          <button
+                            onClick={() => setSelectedClaim(claim)}
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                          >
+                            Review
+                          </button>
+                        )}
+                        <Link
+                          to={`/claims/${claim.id}`}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          View Details
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -481,6 +526,14 @@ const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialSta
           )}
         </div>
       </div>
+
+      {selectedClaim && (
+        <ReviewWizard
+          claim={selectedClaim}
+          onClose={() => setSelectedClaim(null)}
+          onComplete={handleReviewComplete}
+        />
+      )}
     </main>
   );
 };

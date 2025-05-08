@@ -11,11 +11,11 @@ const categories = [
 ];
 
 const claimImages = [
-  'https://dynamicpaintnpanel.com.au/wp-content/uploads/2024/03/Front-end-damage-mazda-DPP-collision-repair-crash-repair-adelaide.png',
-  'https://i.redd.it/car-door-side-panel-accident-v0-1i8fdy379nre1.jpg?width=4032&format=pjpg&auto=webp&s=06741fa9248a199d6c11417222a31fc71c3fd08c',
-  'https://images.pexels.com/photos/29654093/pexels-photo-29654093/free-photo-of-yellow-car-with-damaged-rear-bumper-in-sunlight.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-  'https://markscollisionrepairnc.com/wp-content/uploads/2023/12/iStock-465663510-feat.jpg',
-  'https://images.pexels.com/photos/24960483/pexels-photo-24960483/free-photo-of-the-side-of-a-car-with-scratches-on-the-front-fender.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+  'https://www.morrisbart.com/wp-content/uploads/2021/12/difference-between-minor-and-serious-auto-accident.jpg',
+  'https://images.pexels.com/photos/24960483/pexels-photo-24960483/free-photo-of-the-side-of-a-car-with-scratches-on-the-front-fender.jpeg',
+  'https://www.johnfoy.com/wp-content/uploads/2019/08/faqs-what-happens-if-you-are-at-fault-in-a-car-accident.jpg',
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR2YeHYJsrmMlJo36kfiF3sDT6T2jFURmsu-g&s',
+  'https://townebodyshop.com/wp-content/uploads/2024/01/car-damage-road-accident-car-insurance-800x400.jpg'
 ];
 
 export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfidence?: number): AssessmentResult => {
@@ -114,6 +114,22 @@ export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfide
     thirtyDaysAgo.getTime() + Math.random() * (now.getTime() - thirtyDaysAgo.getTime())
   );
 
+  // Generate random number of images (2-4)
+  const numImages = Math.floor(Math.random() * 3) + 2;
+  const shuffledClaimImages = [...claimImages].sort(() => 0.5 - Math.random());
+  const selectedImages = shuffledClaimImages.slice(0, numImages);
+
+  const images = selectedImages.map((url, index) => ({
+    url,
+    type: index === 0 ? 'overview' : 'damage' as 'overview' | 'damage',
+    timestamp: new Date(randomTimestamp.getTime() + index * 60000).toISOString(),
+    metadata: {
+      width: 1920,
+      height: 1080,
+      size: Math.floor(Math.random() * 5000000) + 1000000 // Random size between 1-6MB
+    }
+  }));
+
   const claim: AssessmentResult = {
     id,
     timestamp: randomTimestamp.toISOString(),
@@ -146,7 +162,8 @@ export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfide
       similarClaims
     },
     status: overrideStatus || 'pending',
-    imageUrl: claimImages[Math.floor(Math.random() * claimImages.length)],
+    imageUrl: images[0].url,
+    images,
     aiConfidence: {
       level: getConfidenceLevel(confidenceScore),
       score: confidenceScore,
@@ -176,27 +193,36 @@ export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfide
 export const generateInitialClaims = (count: number = 40) => {
   const claims: AssessmentResult[] = [];
   
-  // Calculate number of claims for each confidence level
-  const highConfidence = Math.floor(count * 0.75); // 75% high confidence
-  const mediumConfidence = Math.floor(count * 0.20); // 20% medium confidence
-  const lowConfidence = count - highConfidence - mediumConfidence; // Remaining ~5% low confidence
+  // Distribution of claim statuses
+  const statusDistribution = {
+    approved: Math.floor(count * 0.4),  // 40% approved
+    pending: Math.floor(count * 0.25),   // 25% pending
+    processing: Math.floor(count * 0.2), // 20% processing
+    rejected: count - Math.floor(count * 0.85) // ~15% rejected
+  };
 
-  // Generate high confidence claims (90-100%)
-  for (let i = 0; i < highConfidence; i++) {
-    const confidence = Math.ceil(90 + Math.random() * 10);
-    claims.push(generateMockResult(undefined, confidence));
+  // Generate approved claims (mostly high confidence)
+  for (let i = 0; i < statusDistribution.approved; i++) {
+    const confidence = Math.ceil(85 + Math.random() * 15);
+    claims.push(generateMockResult('approved', confidence));
   }
 
-  // Generate medium confidence claims (80-89%)
-  for (let i = 0; i < mediumConfidence; i++) {
-    const confidence = Math.ceil(80 + Math.random() * 9);
-    claims.push(generateMockResult(undefined, confidence));
+  // Generate pending claims (mixed confidence)
+  for (let i = 0; i < statusDistribution.pending; i++) {
+    const confidence = Math.ceil(60 + Math.random() * 30);
+    claims.push(generateMockResult('pending', confidence));
   }
 
-  // Generate low confidence claims (60-79%)
-  for (let i = 0; i < lowConfidence; i++) {
-    const confidence = Math.ceil(60 + Math.random() * 19);
-    claims.push(generateMockResult(undefined, confidence));
+  // Generate processing claims (mixed confidence)
+  for (let i = 0; i < statusDistribution.processing; i++) {
+    const confidence = Math.ceil(70 + Math.random() * 20);
+    claims.push(generateMockResult('processing', confidence));
+  }
+
+  // Generate rejected claims (mostly low confidence)
+  for (let i = 0; i < statusDistribution.rejected; i++) {
+    const confidence = Math.ceil(40 + Math.random() * 30);
+    claims.push(generateMockResult('rejected', confidence));
   }
 
   // Shuffle the claims array
