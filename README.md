@@ -15,10 +15,6 @@ This application demonstrates a real-time, AI-driven system for assessing auto i
 
 ![Assessment App Features](https://i.imgur.com/mpdQQ6S.jpeg)
 
-## 📈 ROI
-
-![Calculated ROI](https://i.imgur.com/4j8TI8y.jpeg)
-
 ## 🛠️ Setup Instructions
 
 ### Prerequisites
