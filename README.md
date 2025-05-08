@@ -69,7 +69,7 @@ yarn dev
 4. Results are displayed with appropriate visualization
 5. Claims are stored in application state (would be persisted to a database in production)
 
-![AI-Enhanced Insurance Claim Flow](https://i.imgur.com/vggwDd0.jpeg)
+![AI-Enhanced Insurance Claim Flow](https://i.imgur.com/aqpPluz.jpeg)
 
 ## 🧠 AI Implementation
 
