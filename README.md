@@ -181,4 +181,4 @@ MIT
 
 ## 👨‍💻 Author
 
-Your Name
+Tanner Chung
