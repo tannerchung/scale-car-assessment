@@ -13,6 +13,8 @@ This application demonstrates a real-time, AI-driven system for assessing auto i
 - **Adjuster Dashboard**: User-friendly interface for claim management and review
 - **Multi-step Upload Process**: Guided workflow from photo upload to assessment results
 
+![Assessment App Features](https://i.imgur.com/mpdQQ6S.jpeg)
+
 ## 🛠️ Setup Instructions
 
 ### Prerequisites
