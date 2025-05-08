@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Save, AlertTriangle } from 'lucide-react';
+import ApiStatusPanel from '../components/settings/ApiStatusPanel';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -38,6 +39,14 @@ const Settings = () => {
             Configure AI model behavior, integration settings, and system parameters.
           </p>
         </div>
+
+        {/* API Status Panel */}
+        <section className="space-y-12">
+          <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-4">
+            API Status
+          </h2>
+          <ApiStatusPanel />
+        </section>
 
         <form onSubmit={handleSubmit} className="space-y-24">
           {/* Confidence Thresholds */}

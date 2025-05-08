@@ -5,23 +5,27 @@ import { generateInitialClaims } from '../mockData';
 interface ClaimsContextType {
   claims: AssessmentResult[];
   addClaim: (claim: AssessmentResult) => void;
-  updateClaim: (id: string, claim: AssessmentResult) => void;
+  updateClaim: (id: string, updatedClaim: AssessmentResult) => void;
 }
 
 const ClaimsContext = createContext<ClaimsContextType | undefined>(undefined);
 
 export const ClaimsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [claims] = useState<AssessmentResult[]>(() => generateInitialClaims(20));
+  const [claims, setClaims] = useState<AssessmentResult[]>(() => generateInitialClaims(20));
 
   const addClaim = (claim: AssessmentResult) => {
-    claims.push(claim);
+    setClaims(prevClaims => [...prevClaims, claim]);
   };
 
   const updateClaim = (id: string, updatedClaim: AssessmentResult) => {
-    const index = claims.findIndex(claim => claim.id === id);
-    if (index !== -1) {
-      claims[index] = updatedClaim;
-    }
+    setClaims(prevClaims => {
+      const index = prevClaims.findIndex(claim => claim.id === id);
+      if (index === -1) return prevClaims;
+      
+      const newClaims = [...prevClaims];
+      newClaims[index] = updatedClaim;
+      return newClaims;
+    });
   };
 
   return (
@@ -38,3 +42,5 @@ export const useClaims = () => {
   }
   return context;
 };
+
+export default ClaimsProvider;

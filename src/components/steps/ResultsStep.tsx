@@ -18,8 +18,10 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, onReset }) => {
   useEffect(() => {
     // Generate mock result for the demo
     const mockResult = generateMockResult();
+    // Override the image URL with the uploaded image
+    mockResult.imageUrl = imageData.url;
     setResult(mockResult);
-  }, []);
+  }, [imageData]);
   
   if (!result) {
     return <div className="p-6 text-center">Loading results...</div>;
@@ -57,7 +59,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, onReset }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <DamageAssessment damage={result.damage} />
+        <DamageAssessment damage={result.damage} imageUrl={imageData.url} />
         <RepairCosts repairCost={result.repairCost} />
       </div>
 

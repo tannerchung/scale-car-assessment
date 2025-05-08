@@ -1,76 +1,151 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { ImageData } from '../../types';
+import { AlertCircle, Bug } from 'lucide-react';
+import { config } from '../../config';
+import { analyzeImage } from '../../services/visionApiService';
 
 interface ProcessingStepProps {
+  imageData: ImageData;
   onComplete: () => void;
 }
 
-const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete }) => {
+const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }) => {
   const [progress, setProgress] = useState(0);
   const [currentTask, setCurrentTask] = useState('Initializing...');
+  const [error, setError] = useState<string | null>(null);
+  const [apiLogs, setApiLogs] = useState<string[]>([]);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const tasks = [
-      'Initializing AI models...',
-      'Analyzing vehicle type...',
-      'Detecting damage areas...',
-      'Assessing damage severity...',
-      'Calculating repair estimates...',
-      'Comparing with historical data...',
-      'Finalizing report...'
-    ];
-    
-    let taskIndex = 0;
-    setCurrentTask(tasks[taskIndex]);
-    
-    // Simulate progress over time
-    const interval = window.setInterval(() => {
-      setProgress(prev => {
-        // Increment progress and update task text
-        const newProgress = prev + Math.random() * 2.5;
-        
-        // Task text updates at specific progress points
-        if (newProgress > 15 && taskIndex === 0) {
-          taskIndex++;
-          setCurrentTask(tasks[taskIndex]);
-        } else if (newProgress > 30 && taskIndex === 1) {
-          taskIndex++;
-          setCurrentTask(tasks[taskIndex]);
-        } else if (newProgress > 45 && taskIndex === 2) {
-          taskIndex++;
-          setCurrentTask(tasks[taskIndex]);
-        } else if (newProgress > 60 && taskIndex === 3) {
-          taskIndex++;
-          setCurrentTask(tasks[taskIndex]);
-        } else if (newProgress > 75 && taskIndex === 4) {
-          taskIndex++;
-          setCurrentTask(tasks[taskIndex]);
-        } else if (newProgress > 90 && taskIndex === 5) {
-          taskIndex++;
-          setCurrentTask(tasks[taskIndex]);
+    // Validate imageData before proceeding
+    if (!imageData) {
+      setError('No image data provided');
+      return;
+    }
+
+    const processImage = async () => {
+      try {
+        if (config.vision.debugMode) {
+          setApiLogs(prev => [...prev, 'Starting image analysis...']);
+          if (config.vision.useRealApi) {
+            setApiLogs(prev => [...prev, 'Using real Vision API']);
+          } else {
+            setApiLogs(prev => [...prev, 'Using mock data (API disabled)']);
+          }
         }
-        
-        // Complete process when reaching 100%
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onComplete();
-          }, 500);
-          return 100;
+
+        const result = await analyzeImage(imageData);
+
+        if (config.vision.debugMode) {
+          setApiLogs(prev => [
+            ...prev,
+            'Analysis complete',
+            'Vehicle data:',
+            JSON.stringify(result.vehicleData, null, 2),
+            'Damage assessment:',
+            JSON.stringify(result.damageAssessment, null, 2)
+          ]);
         }
+
+        // Continue with progress simulation
+        const tasks = [
+          'Initializing AI models...',
+          'Analyzing vehicle type...',
+          'Detecting damage areas...',
+          'Assessing damage severity...',
+          'Calculating repair estimates...',
+          'Comparing with historical data...',
+          'Finalizing report...'
+        ];
         
-        return newProgress;
-      });
-    }, 200);
-    
-    intervalRef.current = interval;
+        let taskIndex = 0;
+        setCurrentTask(tasks[taskIndex]);
+        
+        const interval = window.setInterval(() => {
+          setProgress(prev => {
+            const newProgress = prev + Math.random() * 2.5;
+            
+            if (newProgress > 15 && taskIndex === 0) {
+              taskIndex++;
+              setCurrentTask(tasks[taskIndex]);
+            } else if (newProgress > 30 && taskIndex === 1) {
+              taskIndex++;
+              setCurrentTask(tasks[taskIndex]);
+            } else if (newProgress > 45 && taskIndex === 2) {
+              taskIndex++;
+              setCurrentTask(tasks[taskIndex]);
+            } else if (newProgress > 60 && taskIndex === 3) {
+              taskIndex++;
+              setCurrentTask(tasks[taskIndex]);
+            } else if (newProgress > 75 && taskIndex === 4) {
+              taskIndex++;
+              setCurrentTask(tasks[taskIndex]);
+            } else if (newProgress > 90 && taskIndex === 5) {
+              taskIndex++;
+              setCurrentTask(tasks[taskIndex]);
+            }
+            
+            if (newProgress >= 100) {
+              clearInterval(interval);
+              setTimeout(() => {
+                onComplete();
+              }, 500);
+              return 100;
+            }
+            
+            return newProgress;
+          });
+        }, 200);
+        
+        intervalRef.current = interval;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        if (config.vision.debugMode) {
+          setApiLogs(prev => [...prev, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+        }
+      }
+    };
+
+    processImage();
     
     return () => {
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [onComplete]);
+  }, [imageData, onComplete]);
+
+  // If there's an error, show error state
+  if (error) {
+    return (
+      <div className="p-6 sm:p-8">
+        <div className="max-w-md mx-auto">
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Processing Error
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 sm:p-8">
@@ -145,6 +220,22 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete }) => {
             </div>
           </div>
         </div>
+
+        {config.vision.debugMode && apiLogs.length > 0 && (
+          <div className="mt-8 border border-blue-200 rounded-lg overflow-hidden">
+            <div className="bg-blue-50 px-4 py-2 flex items-center">
+              <Bug className="h-4 w-4 text-blue-500 mr-2" />
+              <h4 className="text-sm font-medium text-blue-700">API Debug Logs</h4>
+            </div>
+            <div className="bg-gray-900 p-4 max-h-60 overflow-y-auto">
+              {apiLogs.map((log, index) => (
+                <div key={index} className="font-mono text-xs text-gray-300">
+                  {log}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 flex justify-center">
           <div className="animate-pulse flex space-x-2 items-center">

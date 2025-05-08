@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Upload } from 'lucide-react';
+import { config } from '../../config';
 
 interface DragDropUploadProps {
   onFileUpload: (file: File) => void;
@@ -8,6 +9,17 @@ interface DragDropUploadProps {
 const DragDropUpload: React.FC<DragDropUploadProps> = ({ onFileUpload }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateFile = (file: File): string | null => {
+    if (!config.ui.supportedImageTypes.includes(file.type)) {
+      return 'Please upload a supported image format (JPG, PNG, or WebP)';
+    }
+    if (file.size > config.ui.maxImageSize) {
+      return 'File size exceeds 5MB limit';
+    }
+    return null;
+  };
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -45,6 +57,13 @@ const DragDropUpload: React.FC<DragDropUploadProps> = ({ onFileUpload }) => {
   }, []);
 
   const handleFile = useCallback((file: File) => {
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
     setIsUploading(true);
     
     // Simulate network delay for file processing
@@ -92,6 +111,10 @@ const DragDropUpload: React.FC<DragDropUploadProps> = ({ onFileUpload }) => {
             />
           </label>
         </div>
+        
+        {error && (
+          <p className="text-sm text-red-600">{error}</p>
+        )}
         
         <p className="text-xs text-gray-500">
           Supported formats: JPG, PNG, WEBP, GIF (Max 5MB)

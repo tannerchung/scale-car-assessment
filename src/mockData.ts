@@ -10,13 +10,51 @@ const categories = [
   { category: 'Miscellaneous', color: '#CBD5E0' }
 ];
 
-const claimImages = [
-  'https://www.morrisbart.com/wp-content/uploads/2021/12/difference-between-minor-and-serious-auto-accident.jpg',
-  'https://images.pexels.com/photos/24960483/pexels-photo-24960483/free-photo-of-the-side-of-a-car-with-scratches-on-the-front-fender.jpeg',
-  'https://www.johnfoy.com/wp-content/uploads/2019/08/faqs-what-happens-if-you-are-at-fault-in-a-car-accident.jpg',
-  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR2YeHYJsrmMlJo36kfiF3sDT6T2jFURmsu-g&s',
-  'https://townebodyshop.com/wp-content/uploads/2024/01/car-damage-road-accident-car-insurance-800x400.jpg'
-];
+// Map damage types to specific images
+const damageTypeImages = {
+  'Front bumper damage with scratches and dents': {
+    overview: 'https://bumperbuddies.com/wp-content/uploads/2021/06/o-1.jpg',
+    damage: 'https://bumperbuddies.com/wp-content/uploads/2021/06/o-1.jpg',
+    detail: 'https://bumperbuddies.com/wp-content/uploads/2021/06/o-1.jpg'
+  },
+  'Side door panel denting and paint scratches': {
+    overview: 'https://i.redd.it/c6yz2tswpicc1.jpeg',
+    damage: 'https://i.redd.it/c6yz2tswpicc1.jpeg',
+    detail: 'https://i.redd.it/c6yz2tswpicc1.jpeg'
+  },
+  'Rear bumper collision damage': {
+    overview: 'https://brightonpanelworks.com.au/wp-content/uploads/2021/09/back-of-gray-car-get-damaged-from-accident-on-the-KPUVAMQ-1-1080x675.jpg',
+    damage: 'https://brightonpanelworks.com.au/wp-content/uploads/2021/09/back-of-gray-car-get-damaged-from-accident-on-the-KPUVAMQ-1-1080x675.jpg',
+    detail: 'https://brightonpanelworks.com.au/wp-content/uploads/2021/09/back-of-gray-car-get-damaged-from-accident-on-the-KPUVAMQ-1-1080x675.jpg'
+  },
+  'Front fender and headlight damage': {
+    overview: 'https://preview.redd.it/front-fender-repairments-w-headlight-v0-4plzxr1lllxc1.jpeg?width=1080&crop=smart&auto=webp&s=1047e748a7f6b1eed9255dc6b3bba221c7c7b016',
+    damage: 'https://preview.redd.it/front-fender-repairments-w-headlight-v0-4plzxr1lllxc1.jpeg?width=1080&crop=smart&auto=webp&s=1047e748a7f6b1eed9255dc6b3bba221c7c7b016',
+    detail: 'https://preview.redd.it/front-fender-repairments-w-headlight-v0-4plzxr1lllxc1.jpeg?width=1080&crop=smart&auto=webp&s=1047e748a7f6b1eed9255dc6b3bba221c7c7b016'
+  },
+  'Hood denting and paint damage': {
+    overview: 'https://dentdominator.com/wp-content/uploads/2021/11/hail-damage.jpg',
+    damage: 'https://dentdominator.com/wp-content/uploads/2021/11/hail-damage.jpg',
+    detail: 'https://dentdominator.com/wp-content/uploads/2021/11/hail-damage.jpg'
+  },
+  'Windshield crack and frame damage': {
+    overview: 'https://autoglassinsanantonio.com/wp-content/uploads/2019/01/Picture3.png',
+    damage: 'https://autoglassinsanantonio.com/wp-content/uploads/2019/01/Picture3.png',
+    detail: 'https://autoglassinsanantonio.com/wp-content/uploads/2019/01/Picture3.png'
+  },
+  'Side mirror damage and window scratches': {
+    overview: 'https://i.sstatic.net/WU0Qj.jpg',
+    damage: 'https://i.sstatic.net/WU0Qj.jpg',
+    detail: 'https://i.sstatic.net/WU0Qj.jpg'
+  }
+};
+
+// Default fallback image if no matching damage type is found
+const defaultImages = {
+  overview: 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg',
+  damage: 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg',
+  detail: 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg'
+};
 
 export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfidence?: number): AssessmentResult => {
   // Generate a random ID
@@ -43,16 +81,7 @@ export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfide
   // Use provided confidence score or generate based on distribution
   const confidenceScore = Math.ceil(overrideConfidence ?? Math.random() * 100);
 
-  const damageTypes = [
-    'Front bumper damage with scratches and dents',
-    'Side door panel denting and paint scratches',
-    'Rear bumper collision damage',
-    'Front fender and headlight damage',
-    'Hood denting and paint damage',
-    'Windshield crack and frame damage',
-    'Side mirror damage and window scratches'
-  ];
-  
+  const damageTypes = Object.keys(damageTypeImages);
   const description = damageTypes[Math.floor(Math.random() * damageTypes.length)];
   const severityOptions = ['Minor', 'Moderate', 'Severe'] as const;
   const severity = severityOptions[Math.floor(Math.random() * severityOptions.length)];
@@ -114,21 +143,42 @@ export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfide
     thirtyDaysAgo.getTime() + Math.random() * (now.getTime() - thirtyDaysAgo.getTime())
   );
 
-  // Generate random number of images (2-4)
-  const numImages = Math.floor(Math.random() * 3) + 2;
-  const shuffledClaimImages = [...claimImages].sort(() => 0.5 - Math.random());
-  const selectedImages = shuffledClaimImages.slice(0, numImages);
+  // Get the appropriate images for this damage type
+  const claimImages = damageTypeImages[description] || defaultImages;
 
-  const images = selectedImages.map((url, index) => ({
-    url,
-    type: index === 0 ? 'overview' : 'damage' as 'overview' | 'damage',
-    timestamp: new Date(randomTimestamp.getTime() + index * 60000).toISOString(),
-    metadata: {
-      width: 1920,
-      height: 1080,
-      size: Math.floor(Math.random() * 5000000) + 1000000 // Random size between 1-6MB
+  // Generate multiple views of the same image
+  const images = [
+    {
+      url: claimImages.overview,
+      type: 'overview' as const,
+      timestamp: randomTimestamp.toISOString(),
+      metadata: {
+        width: 1920,
+        height: 1080,
+        size: Math.floor(Math.random() * 5000000) + 1000000
+      }
+    },
+    {
+      url: claimImages.damage,
+      type: 'damage' as const,
+      timestamp: new Date(randomTimestamp.getTime() + 60000).toISOString(),
+      metadata: {
+        width: 1920,
+        height: 1080,
+        size: Math.floor(Math.random() * 5000000) + 1000000
+      }
+    },
+    {
+      url: claimImages.detail,
+      type: 'detail' as const,
+      timestamp: new Date(randomTimestamp.getTime() + 120000).toISOString(),
+      metadata: {
+        width: 1920,
+        height: 1080,
+        size: Math.floor(Math.random() * 5000000) + 1000000
+      }
     }
-  }));
+  ];
 
   const claim: AssessmentResult = {
     id,
@@ -162,7 +212,7 @@ export const generateMockResult = (overrideStatus?: ClaimStatus, overrideConfide
       similarClaims
     },
     status: overrideStatus || 'pending',
-    imageUrl: images[0].url,
+    imageUrl: claimImages.overview,
     images,
     aiConfidence: {
       level: getConfidenceLevel(confidenceScore),

@@ -52,6 +52,10 @@ const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl })
   // Check for low confidence areas
   const hasLowConfidenceAreas = damage.affectedAreas.some(area => area.confidence < 75);
 
+  // Use a consistent fallback image
+  const fallbackImage = 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg';
+  const displayImage = imageUrl || fallbackImage;
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm h-full">
       <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-4 py-3 text-white">
@@ -80,9 +84,13 @@ const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl })
           <p className="text-sm text-gray-500 mb-2">Affected Areas</p>
           <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden mb-4">
             <img
-              src={imageUrl}
+              src={displayImage}
               alt="Vehicle damage"
               className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = fallbackImage;
+              }}
             />
             <DamageOverlay
               areas={damage.affectedAreas}

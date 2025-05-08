@@ -69,15 +69,16 @@ const NewClaim: React.FC = () => {
           />
         )}
         
-        {currentStep === 2 && (
+        {currentStep === 2 && imageData && (
           <ProcessingStep 
+            imageData={imageData}
             onComplete={handleProcessingComplete}
           />
         )}
         
-        {currentStep === 3 && processingComplete && (
+        {currentStep === 3 && processingComplete && imageData && (
           <ResultsStep 
-            imageData={imageData!}
+            imageData={imageData}
             onReset={handleReset} 
           />
         )}
