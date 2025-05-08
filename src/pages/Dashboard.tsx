@@ -490,18 +490,18 @@ const Dashboard: React.FC<DashboardProps> = ({ showAllClaims = false, initialSta
                       ${claim.repairCost.total.toLocaleString()}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end gap-4">
                         {claim.status === 'pending' && claim.aiConfidence.needsHumanReview && (
                           <button
                             onClick={() => setSelectedClaim(claim)}
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
                           >
                             Review
                           </button>
                         )}
                         <Link
                           to={`/claims/${claim.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-900"
                         >
                           View Details
                         </Link>
