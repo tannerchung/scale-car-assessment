@@ -3,6 +3,7 @@ import { Upload, Link, X } from 'lucide-react';
 import { ImageData } from '../../types';
 import DragDropUpload from '../upload/DragDropUpload';
 import UrlInput from '../upload/UrlInput';
+import { analyzeDamageWithClaude } from '../../services/aiService';
 
 interface UploadStepProps {
   onImageUpload: (imageData: ImageData) => void;
@@ -11,8 +12,47 @@ interface UploadStepProps {
 const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
   const [uploadMethod, setUploadMethod] = useState<'file' | 'url'>('file');
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFileUpload = useCallback((file: File) => {
+  const processImage = async (imageData: ImageData) => {
+    try {
+      setIsProcessing(true);
+      setError(null);
+
+      // Convert image to base64 if it's a file
+      let base64Data: string;
+      if (imageData.type === 'file' && imageData.file) {
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(imageData.file);
+        });
+      } else {
+        // For URLs, fetch and convert to base64
+        const response = await fetch(imageData.url);
+        const blob = await response.blob();
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      // Analyze image with Claude
+      await analyzeDamageWithClaude(base64Data);
+
+      // If successful, proceed with the upload
+      onImageUpload(imageData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process image');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFileUpload = useCallback(async (file: File) => {
     // Check file type
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file');
@@ -30,15 +70,15 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
     
     // Create object URL for preview
     const url = URL.createObjectURL(file);
-    onImageUpload({
+    await processImage({
       file,
       url,
       type: 'file',
       name: file.name
     });
-  }, [onImageUpload]);
+  }, []);
 
-  const handleUrlUpload = useCallback((url: string) => {
+  const handleUrlUpload = useCallback(async (url: string) => {
     // Basic URL validation
     if (!url.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/i)) {
       setError('Please enter a valid image URL (ending with jpg, jpeg, png, webp, or gif)');
@@ -51,12 +91,12 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
     const urlParts = url.split('/');
     const fileName = urlParts[urlParts.length - 1];
     
-    onImageUpload({
+    await processImage({
       url,
       type: 'url',
       name: fileName
     });
-  }, [onImageUpload]);
+  }, []);
 
   return (
     <div className="p-6 sm:p-8">
@@ -76,6 +116,7 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
             onClick={() => setUploadMethod('file')}
+            disabled={isProcessing}
           >
             <div className="flex items-center">
               <Upload className="h-5 w-5 mr-2" />
@@ -89,6 +130,7 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
             onClick={() => setUploadMethod('url')}
+            disabled={isProcessing}
           >
             <div className="flex items-center">
               <Link className="h-5 w-5 mr-2" />
@@ -102,6 +144,15 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
           <X className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
           <p>{error}</p>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700 mr-2"></div>
+            <p>Processing image with AI...</p>
+          </div>
         </div>
       )}
 

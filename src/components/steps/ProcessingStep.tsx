@@ -3,10 +3,12 @@ import { ImageData } from '../../types';
 import { AlertCircle, Bug } from 'lucide-react';
 import { config } from '../../config';
 import { analyzeImage } from '../../services/visionApiService';
+import { analyzeDamageWithClaude } from '../../services/aiService';
+import { useSettingsStore } from '../../store/settingsStore';
 
 interface ProcessingStepProps {
   imageData: ImageData;
-  onComplete: () => void;
+  onComplete: (results: { vision?: any; claude?: any }) => void;
 }
 
 const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }) => {
@@ -15,9 +17,9 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
   const [error, setError] = useState<string | null>(null);
   const [apiLogs, setApiLogs] = useState<string[]>([]);
   const intervalRef = useRef<number | null>(null);
+  const { activeAiProvider, visionApiDebug, anthropicApiDebug } = useSettingsStore();
 
   useEffect(() => {
-    // Validate imageData before proceeding
     if (!imageData) {
       setError('No image data provided');
       return;
@@ -25,29 +27,31 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
 
     const processImage = async () => {
       try {
-        if (config.vision.debugMode) {
+        if (visionApiDebug || anthropicApiDebug) {
           setApiLogs(prev => [...prev, 'Starting image analysis...']);
-          if (config.vision.useRealApi) {
-            setApiLogs(prev => [...prev, 'Using real Vision API']);
-          } else {
-            setApiLogs(prev => [...prev, 'Using mock data (API disabled)']);
-          }
         }
 
-        const result = await analyzeImage(imageData);
-
-        if (config.vision.debugMode) {
-          setApiLogs(prev => [
-            ...prev,
-            'Analysis complete',
-            'Vehicle data:',
-            JSON.stringify(result.vehicleData, null, 2),
-            'Damage assessment:',
-            JSON.stringify(result.damageAssessment, null, 2)
-          ]);
+        // Convert image to base64 if needed
+        let base64Data: string;
+        if (imageData.type === 'file' && imageData.file) {
+          base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageData.file);
+          });
+        } else {
+          const response = await fetch(imageData.url);
+          const blob = await response.blob();
+          base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
         }
 
-        // Continue with progress simulation
+        // Start progress simulation
         const tasks = [
           'Initializing AI models...',
           'Analyzing vehicle type...',
@@ -60,7 +64,33 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
         
         let taskIndex = 0;
         setCurrentTask(tasks[taskIndex]);
-        
+
+        // Process with selected AI provider(s)
+        const results: { vision?: any; claude?: any } = {};
+
+        if (activeAiProvider === 'vision' || activeAiProvider === 'both') {
+          results.vision = await analyzeImage(imageData);
+          if (visionApiDebug) {
+            setApiLogs(prev => [
+              ...prev,
+              'Vision API analysis complete',
+              JSON.stringify(results.vision, null, 2)
+            ]);
+          }
+        }
+
+        if (activeAiProvider === 'claude' || activeAiProvider === 'both') {
+          results.claude = await analyzeDamageWithClaude(base64Data);
+          if (anthropicApiDebug) {
+            setApiLogs(prev => [
+              ...prev,
+              'Claude analysis complete',
+              JSON.stringify(results.claude, null, 2)
+            ]);
+          }
+        }
+
+        // Continue with progress simulation
         const interval = window.setInterval(() => {
           setProgress(prev => {
             const newProgress = prev + Math.random() * 2.5;
@@ -88,7 +118,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
             if (newProgress >= 100) {
               clearInterval(interval);
               setTimeout(() => {
-                onComplete();
+                onComplete(results);
               }, 500);
               return 100;
             }
@@ -100,7 +130,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
         intervalRef.current = interval;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        if (config.vision.debugMode) {
+        if (visionApiDebug || anthropicApiDebug) {
           setApiLogs(prev => [...prev, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
         }
       }
@@ -113,9 +143,8 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
         clearInterval(intervalRef.current);
       }
     };
-  }, [imageData, onComplete]);
+  }, [imageData, onComplete, activeAiProvider, visionApiDebug, anthropicApiDebug]);
 
-  // If there's an error, show error state
   if (error) {
     return (
       <div className="p-6 sm:p-8">
@@ -221,7 +250,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
           </div>
         </div>
 
-        {config.vision.debugMode && apiLogs.length > 0 && (
+        {(visionApiDebug || anthropicApiDebug) && apiLogs.length > 0 && (
           <div className="mt-8 border border-blue-200 rounded-lg overflow-hidden">
             <div className="bg-blue-50 px-4 py-2 flex items-center">
               <Bug className="h-4 w-4 text-blue-500 mr-2" />

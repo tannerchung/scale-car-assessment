@@ -86,6 +86,27 @@ export interface AssessmentResult {
   };
 }
 
+export interface ClaudeAnalysisResult {
+  vehicle: {
+    make: string;
+    model: string;
+    confidence: number;
+  };
+  damage: {
+    description: string;
+    severity: 'Minor' | 'Moderate' | 'Severe';
+    confidence: number;
+    affectedAreas: Array<{
+      name: string;
+      confidence: number;
+    }>;
+  };
+  repairCost: {
+    estimate: number;
+    confidence: number;
+  };
+}
+
 export type ClaimStatus = 'pending' | 'processing' | 'approved' | 'rejected';
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 export type ReviewType = 'auto' | 'quick' | 'detailed' | 'specialist';

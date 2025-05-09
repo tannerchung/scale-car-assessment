@@ -12,6 +12,10 @@ const NewClaim: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [processingComplete, setProcessingComplete] = useState(false);
+  const [aiResults, setAiResults] = useState<{
+    vision?: any;
+    claude?: any;
+  } | null>(null);
   const navigate = useNavigate();
 
   const steps = [
@@ -31,7 +35,8 @@ const NewClaim: React.FC = () => {
     setProcessingComplete(false);
   };
 
-  const handleProcessingComplete = () => {
+  const handleProcessingComplete = (results: { vision?: any; claude?: any }) => {
+    setAiResults(results);
     setProcessingComplete(true);
     setCurrentStep(3);
   };
@@ -79,6 +84,7 @@ const NewClaim: React.FC = () => {
         {currentStep === 3 && processingComplete && imageData && (
           <ResultsStep 
             imageData={imageData}
+            aiResults={aiResults}
             onReset={handleReset} 
           />
         )}

@@ -1,50 +1,203 @@
 import React, { useState, useEffect } from 'react';
-import { config } from '../../config';
-import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2 } from 'lucide-react';
+import { config, AIProvider } from '../../config';
+import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2, Brain, Eye, RefreshCw } from 'lucide-react';
 import visionApiService from '../../services/visionApiService';
+import aiService from '../../services/aiService';
+import { useSettingsStore } from '../../store/settingsStore';
+import { format } from 'date-fns';
 
 const ApiStatusPanel: React.FC = () => {
-  const [isEnabled, setIsEnabled] = useState(config.vision.useRealApi);
-  const [debugMode, setDebugMode] = useState(config.vision.debugMode);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const {
+    activeAiProvider,
+    setActiveAiProvider,
+    visionApiDebug,
+    setVisionApiDebug,
+    anthropicApiDebug,
+    setAnthropicApiDebug,
+    apiErrors,
+    setApiError
+  } = useSettingsStore();
+  
+  const [isVerifying, setIsVerifying] = useState<{
+    vision: boolean;
+    claude: boolean;
+  }>({
+    vision: false,
+    claude: false
+  });
+
   const [apiStatus, setApiStatus] = useState<{
-    verified: boolean;
-    error?: string;
-  }>({ verified: false });
-  const isConfigured = Boolean(config.vision.apiKey);
+    vision: { verified: boolean; lastCheck?: number };
+    claude: { verified: boolean; lastCheck?: number };
+  }>({
+    vision: { verified: false },
+    claude: { verified: false }
+  });
+
+  const isVisionConfigured = Boolean(config.vision.apiKey);
+  const isClaudeConfigured = Boolean(config.anthropic.apiKey);
 
   useEffect(() => {
-    if (isEnabled && isConfigured) {
-      verifyApiKey();
+    if (activeAiProvider === 'vision' || activeAiProvider === 'both') {
+      verifyVisionApiKey();
     }
-  }, [isEnabled, isConfigured]);
+    if (activeAiProvider === 'claude' || activeAiProvider === 'both') {
+      verifyClaudeApiKey();
+    }
+  }, [activeAiProvider]);
 
-  const verifyApiKey = async () => {
-    setIsVerifying(true);
+  const verifyVisionApiKey = async () => {
+    if (!isVisionConfigured) {
+      setApiError('vision', { message: 'API key not configured' });
+      return;
+    }
+
+    setIsVerifying(prev => ({ ...prev, vision: true }));
     try {
       const result = await visionApiService.verifyApiKey();
-      setApiStatus({ verified: result.valid, error: result.error });
+      setApiStatus(prev => ({
+        ...prev,
+        vision: { 
+          verified: result.valid,
+          lastCheck: Date.now()
+        }
+      }));
+      
+      if (!result.valid) {
+        setApiError('vision', { 
+          message: result.error || 'Verification failed',
+          details: result
+        });
+      } else {
+        setApiError('vision', null);
+      }
     } catch (error) {
-      setApiStatus({ 
-        verified: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      setApiStatus(prev => ({
+        ...prev,
+        vision: { verified: false, lastCheck: Date.now() }
+      }));
+      setApiError('vision', { 
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error
       });
     } finally {
-      setIsVerifying(false);
+      setIsVerifying(prev => ({ ...prev, vision: false }));
     }
   };
 
-  const handleToggle = () => {
-    const newValue = !isEnabled;
-    setIsEnabled(newValue);
-    localStorage.setItem('useRealVisionApi', newValue.toString());
-    window.location.reload(); // Reload to apply changes
+  const verifyClaudeApiKey = async () => {
+    if (!isClaudeConfigured) {
+      setApiError('claude', { message: 'API key not configured' });
+      return;
+    }
+
+    setIsVerifying(prev => ({ ...prev, claude: true }));
+    try {
+      const result = await aiService.verifyAnthropicApiKey();
+      setApiStatus(prev => ({
+        ...prev,
+        claude: { 
+          verified: result.valid,
+          lastCheck: Date.now()
+        }
+      }));
+      
+      if (!result.valid) {
+        setApiError('claude', { 
+          message: result.error || 'Verification failed',
+          details: result
+        });
+      } else {
+        setApiError('claude', null);
+      }
+    } catch (error) {
+      setApiStatus(prev => ({
+        ...prev,
+        claude: { verified: false, lastCheck: Date.now() }
+      }));
+      setApiError('claude', { 
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error
+      });
+    } finally {
+      setIsVerifying(prev => ({ ...prev, claude: false }));
+    }
   };
 
-  const handleDebugToggle = () => {
-    const newValue = !debugMode;
-    setDebugMode(newValue);
-    localStorage.setItem('visionApiDebug', newValue.toString());
+  const renderApiStatus = (
+    provider: 'vision' | 'claude',
+    isConfigured: boolean,
+    status: { verified: boolean; lastCheck?: number },
+    error: typeof apiErrors.vision | typeof apiErrors.claude,
+    isVerifying: boolean
+  ) => {
+    let statusColor = 'bg-gray-100 text-gray-800';
+    let statusText = 'Not Configured';
+
+    if (isConfigured) {
+      if (isVerifying) {
+        statusColor = 'bg-blue-100 text-blue-800';
+        statusText = 'Verifying...';
+      } else if (status.verified) {
+        statusColor = 'bg-green-100 text-green-800';
+        statusText = 'Active';
+      } else {
+        statusColor = 'bg-red-100 text-red-800';
+        statusText = 'Error';
+      }
+    }
+
+    return (
+      <div className="flex items-center space-x-2">
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColor}`}>
+          {statusText}
+        </span>
+        {status.lastCheck && (
+          <span className="text-xs text-gray-500">
+            Last checked: {format(status.lastCheck, 'HH:mm:ss')}
+          </span>
+        )}
+        {isConfigured && !isVerifying && (
+          <button
+            onClick={() => provider === 'vision' ? verifyVisionApiKey() : verifyClaudeApiKey()}
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Refresh status"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderErrorDetails = (error: typeof apiErrors.vision | typeof apiErrors.claude) => {
+    if (!error) return null;
+
+    return (
+      <div className="mt-4 space-y-2">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <XCircle className="h-5 w-5 text-red-400" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error Details</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error.message}</p>
+                {error.timestamp && (
+                  <p className="mt-1 text-xs">
+                    Occurred at: {format(error.timestamp, 'HH:mm:ss')}
+                  </p>
+                )}
+                {error.details && visionApiDebug && (
+                  <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto">
+                    {JSON.stringify(error.details, null, 2)}
+                  </pre>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -53,222 +206,91 @@ const ApiStatusPanel: React.FC = () => {
         <div className="flex items-center">
           <Settings2 className="h-5 w-5 text-gray-400 mr-2" />
           <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Vision API Configuration
+            AI Provider Configuration
           </h3>
         </div>
       </div>
       
       <div className="px-4 py-5 sm:p-6">
-        <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <dt className="text-sm font-medium text-gray-500">API Status</dt>
-              <dd className="flex items-center">
-                {isEnabled ? (
-                  isVerifying ? (
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Verifying
-                    </span>
-                  ) : isConfigured ? (
-                    apiStatus.verified ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Error
-                      </span>
-                    )
-                  ) : (
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      <AlertTriangle className="h-4 w-4 mr-1" />
-                      Not Configured
-                    </span>
-                  )
-                ) : (
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Disabled
-                  </span>
-                )}
-              </dd>
-            </div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <dt className="text-sm font-medium text-gray-500">Use Real API</dt>
-              <dd>
-                <button
-                  type="button"
-                  onClick={handleToggle}
-                  className={`${
-                    isEnabled ? 'bg-blue-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
-                  role="switch"
-                  aria-checked={isEnabled}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`${
-                      isEnabled ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  />
-                </button>
-              </dd>
-            </div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <dt className="text-sm font-medium text-gray-500">Debug Mode</dt>
-              <dd>
-                <button
-                  type="button"
-                  onClick={handleDebugToggle}
-                  className={`${
-                    debugMode ? 'bg-blue-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
-                  role="switch"
-                  aria-checked={debugMode}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`${
-                      debugMode ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  />
-                </button>
-              </dd>
-            </div>
-            <p className="mt-1 text-sm text-gray-500">
-              Show API response logs during image processing
-            </p>
-          </div>
-
+        <div className="space-y-6">
+          {/* AI Provider Selection */}
           <div>
-            <dt className="text-sm font-medium text-gray-500">Mode</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {isEnabled ? 'Live API' : 'Mock Data'}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-sm font-medium text-gray-500">API Key Status</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {isConfigured ? (
-                apiStatus.verified ? (
-                  <span className="text-green-600">Valid</span>
-                ) : (
-                  <span className="text-red-600">Invalid</span>
-                )
-              ) : (
-                <span className="text-red-600">Not Configured</span>
-              )}
-            </dd>
-          </div>
-
-          <div className="sm:col-span-2">
-            <dt className="text-sm font-medium text-gray-500">Supported Image Types</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {config.ui.supportedImageTypes.map(type => type.split('/')[1].toUpperCase()).join(', ')}
-            </dd>
-          </div>
-
-          <div className="sm:col-span-2">
-            <dt className="text-sm font-medium text-gray-500">Max Image Size</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {(config.ui.maxImageSize / (1024 * 1024)).toFixed(0)}MB
-            </dd>
-          </div>
-        </dl>
-
-        {isEnabled && !isConfigured && (
-          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  API Key Required
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    The Vision API is enabled but no API key is configured. Please add your API key to the .env file:
-                  </p>
-                  <pre className="mt-2 text-xs bg-yellow-100 p-2 rounded">
-                    VITE_GOOGLE_CLOUD_API_KEY=your_api_key_here
-                  </pre>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isEnabled && isConfigured && apiStatus.error && (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <XCircle className="h-5 w-5 text-red-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  API Key Verification Failed
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{apiStatus.error}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {debugMode && (
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <Bug className="h-5 w-5 text-blue-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">
-                  Debug Mode Enabled
-                </h3>
-                <div className="mt-2 text-sm text-blue-700">
-                  <p>
-                    API response logs will be shown during image processing. This may include sensitive information.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isEnabled && isConfigured && (
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={verifyApiKey}
-              disabled={isVerifying}
-              className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                isVerifying
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-              }`}
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Active AI Provider
+            </label>
+            <select
+              value={activeAiProvider}
+              onChange={(e) => setActiveAiProvider(e.target.value as AIProvider)}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             >
-              {isVerifying ? (
-                <>
-                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                  Verifying...
-                </>
-              ) : (
-                'Verify API Key'
-              )}
-            </button>
+              {config.aiProviders.available.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider === 'vision' ? 'Google Vision API Only' :
+                   provider === 'claude' ? 'Claude AI Only' :
+                   'Both Providers'}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          {/* Vision API Status */}
+          {(activeAiProvider === 'vision' || activeAiProvider === 'both') && (
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <Eye className="h-5 w-5 text-blue-500 mr-2" />
+                  <h4 className="text-lg font-medium text-gray-900">Vision API Status</h4>
+                </div>
+                {renderApiStatus('vision', isVisionConfigured, apiStatus.vision, apiErrors.vision, isVerifying.vision)}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={visionApiDebug}
+                      onChange={(e) => setVisionApiDebug(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-900">Enable Debug Mode</span>
+                  </label>
+                </div>
+
+                {apiErrors.vision && renderErrorDetails(apiErrors.vision)}
+              </div>
+            </div>
+          )}
+
+          {/* Claude AI Status */}
+          {(activeAiProvider === 'claude' || activeAiProvider === 'both') && (
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <Brain className="h-5 w-5 text-purple-500 mr-2" />
+                  <h4 className="text-lg font-medium text-gray-900">Claude AI Status</h4>
+                </div>
+                {renderApiStatus('claude', isClaudeConfigured, apiStatus.claude, apiErrors.claude, isVerifying.claude)}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={anthropicApiDebug}
+                      onChange={(e) => setAnthropicApiDebug(e.target.checked)}
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-900">Enable Debug Mode</span>
+                  </label>
+                </div>
+
+                {apiErrors.claude && renderErrorDetails(apiErrors.claude)}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

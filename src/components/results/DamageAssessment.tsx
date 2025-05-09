@@ -1,14 +1,21 @@
 import React from 'react';
 import { DamageAssessment as DamageAssessmentType } from '../../types';
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, Bug } from 'lucide-react';
 import DamageOverlay from '../DamageOverlay';
+import { useSettingsStore } from '../../store/settingsStore';
 
 interface DamageAssessmentProps {
   damage: DamageAssessmentType;
   imageUrl: string;
+  aiResults?: {
+    vision?: any;
+    claude?: any;
+  };
 }
 
-const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl }) => {
+const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl, aiResults }) => {
+  const { anthropicApiDebug } = useSettingsStore();
+
   // Determine severity color
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -53,7 +60,7 @@ const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl })
   const hasLowConfidenceAreas = damage.affectedAreas.some(area => area.confidence < 75);
 
   // Use a consistent fallback image
-  const fallbackImage = 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg';
+  const fallbackImage = 'https://valleycollision.com/wp-content/uploads/2021/09/bodywork-damage-PSJP9VW-1.jpg';
   const displayImage = imageUrl || fallbackImage;
 
   return (
@@ -117,18 +124,28 @@ const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl })
             {damage.affectedAreas.map((area, index) => (
               <div 
                 key={index} 
-                className={`bg-gray-50 border rounded p-2 flex justify-between items-center ${
+                className={`bg-gray-50 border rounded p-2 ${
                   area.confidence < 75 ? 'border-amber-300' : 'border-gray-200'
                 }`}
               >
-                <span className="text-gray-900">{area.name}</span>
-                <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${
-                  area.confidence < 75 
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {area.confidence}% confidence
-                </span>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-gray-900">{area.name}</span>
+                  <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${
+                    area.confidence < 75 
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {area.confidence}% confidence
+                  </span>
+                </div>
+                {anthropicApiDebug && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    x: {area.coordinates.x.toFixed(1)}%, 
+                    y: {area.coordinates.y.toFixed(1)}%, 
+                    w: {area.coordinates.width.toFixed(1)}%, 
+                    h: {area.coordinates.height.toFixed(1)}%
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -142,6 +159,18 @@ const DamageAssessment: React.FC<DamageAssessmentProps> = ({ damage, imageUrl })
             </p>
           </div>
         </div>
+
+        {anthropicApiDebug && aiResults?.claude && (
+          <div className="mt-4 border-t border-gray-200 pt-4">
+            <div className="flex items-center mb-2">
+              <Bug className="h-4 w-4 text-purple-500 mr-2" />
+              <h4 className="text-sm font-medium text-gray-900">Claude Analysis Debug</h4>
+            </div>
+            <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto max-h-48">
+              {JSON.stringify(aiResults.claude, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );

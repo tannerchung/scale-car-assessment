@@ -16,7 +16,8 @@ const Settings = () => {
     apiKeys: {
       openai: '',
       azure: '',
-      googleCloud: ''
+      googleCloud: '',
+      claude: ''
     },
     retraining: {
       schedule: 'weekly',
@@ -245,6 +246,23 @@ const Settings = () => {
                       apiKeys: {
                         ...settings.apiKeys,
                         googleCloud: e.target.value
+                      }
+                    })}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Anthropic Claude API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={settings.apiKeys.claude}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      apiKeys: {
+                        ...settings.apiKeys,
+                        claude: e.target.value
                       }
                     })}
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
