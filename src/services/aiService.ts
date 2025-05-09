@@ -3,7 +3,10 @@ import { ClaudeAnalysisResult } from '../types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export async function analyzeDamageWithClaude(imageBase64: string): Promise<ClaudeAnalysisResult> {
+export async function analyzeDamageWithClaude(
+  imageBase64: string,
+  visionResults?: any
+): Promise<ClaudeAnalysisResult> {
   try {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase configuration missing');
@@ -14,24 +17,27 @@ export async function analyzeDamageWithClaude(imageBase64: string): Promise<Clau
       ? imageBase64.split('base64,')[1]
       : imageBase64;
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/claude-proxy`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({
-        model: "claude-3-opus-20240229",
-        max_tokens: 2048,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Please analyze this car image for damage. For each damaged area, provide precise coordinates as percentages relative to the image dimensions (where 0,0 is top-left and 100,100 is bottom-right).
+    // Enhance prompt with Vision API results if available
+    let enhancedPrompt = `Please analyze this car image for damage. For each damaged area, provide precise coordinates as percentages relative to the image dimensions (where 0,0 is top-left and 100,100 is bottom-right).`;
 
-Format your response as JSON with this structure:
+    if (visionResults) {
+      enhancedPrompt += `\n\nGoogle Vision API has detected the following:`;
+      
+      if (visionResults.vehicleData) {
+        enhancedPrompt += `\nVehicle color: ${visionResults.vehicleData.color}`;
+      }
+
+      if (visionResults.damageAssessment?.affectedAreas) {
+        enhancedPrompt += `\nDetected vehicle parts with locations:`;
+        visionResults.damageAssessment.affectedAreas.forEach((area: any) => {
+          enhancedPrompt += `\n- ${area.name} at coordinates (${area.coordinates.x.toFixed(1)}%, ${area.coordinates.y.toFixed(1)}%)`;
+        });
+      }
+
+      enhancedPrompt += `\n\nPlease validate these findings and provide a more detailed damage assessment.`;
+    }
+
+    enhancedPrompt += `\n\nFormat your response as JSON with this structure:
 {
   "vehicle": {
     "make": string,
@@ -59,7 +65,24 @@ Format your response as JSON with this structure:
   }
 }
 
-For each damaged area, carefully identify its position and size in the image. The coordinates should precisely outline the damaged region. Ensure coordinates stay within image bounds (0-100).`
+For each damaged area, carefully identify its position and size in the image. The coordinates should precisely outline the damaged region. Ensure coordinates stay within image bounds (0-100).`;
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        model: "claude-3-opus-20240229",
+        max_tokens: 2048,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: enhancedPrompt
               },
               {
                 type: "image",
@@ -87,10 +110,9 @@ For each damaged area, carefully identify its position and size in the image. Th
     }
 
     const rawResponse = data.content[0].text;
-    console.log('Raw Claude response:', rawResponse); // Log raw response for debugging
+    console.log('Raw Claude response:', rawResponse);
 
     try {
-      // Try to find and extract valid JSON from the response
       const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No valid JSON found in response');
@@ -98,12 +120,11 @@ For each damaged area, carefully identify its position and size in the image. Th
 
       const parsedData = JSON.parse(jsonMatch[0]);
 
-      // Validate the required structure
       if (!parsedData.vehicle || !parsedData.damage || !parsedData.repairCost) {
         throw new Error('Invalid response structure');
       }
 
-      // Validate coordinates for each affected area
+      // Validate and adjust coordinates
       parsedData.damage.affectedAreas = parsedData.damage.affectedAreas.map((area: any) => ({
         ...area,
         coordinates: {
@@ -119,7 +140,6 @@ For each damaged area, carefully identify its position and size in the image. Th
       console.error('Failed to parse Claude response:', rawResponse);
       console.error('Parse error:', parseError);
 
-      // Return a default structure with error indicators
       return {
         vehicle: {
           make: 'Unknown',
@@ -128,7 +148,7 @@ For each damaged area, carefully identify its position and size in the image. Th
         },
         damage: {
           description: 'Error parsing AI response',
-          severity: 'Unknown',
+          severity: 'Unknown' as any,
           confidence: 0,
           affectedAreas: []
         },

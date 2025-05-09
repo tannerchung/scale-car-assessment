@@ -11,7 +11,6 @@ export const verifyApiKey = async (): Promise<{ valid: boolean; error?: string }
   }
 
   try {
-    // Use a small test image to verify the API key
     const testImage = 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg';
     
     const requestData = {
@@ -51,7 +50,7 @@ export const verifyApiKey = async (): Promise<{ valid: boolean; error?: string }
       if (error.response?.status === 403) {
         return { 
           valid: false, 
-          error: 'API key authentication failed. Please verify your API key has the necessary permissions.'
+          error: 'API key authentication failed'
         };
       } else if (error.response?.status === 429) {
         return { 
@@ -74,8 +73,8 @@ export const verifyApiKey = async (): Promise<{ valid: boolean; error?: string }
 export const analyzeImage = async (imageData: ImageData): Promise<{
   vehicleData: { make: string; model: string; year: number; color: string; confidence: number };
   damageAssessment: DamageAssessment;
+  rawResponse?: any;
 }> => {
-  // If real API is disabled, return mock data with simulated delay
   if (!config.vision.useRealApi) {
     console.log('Using mock Vision API data (real API disabled)');
     await new Promise(resolve => setTimeout(resolve, config.vision.mockDelay));
@@ -83,28 +82,62 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
   }
 
   let retryCount = 0;
+  let base64Data: string;
+
+  // Convert image to base64
+  try {
+    if (imageData.type === 'file' && imageData.file) {
+      base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data URL prefix if present
+          resolve(result.split('base64,')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(imageData.file);
+      });
+    } else {
+      // For URLs, fetch and convert to base64
+      const response = await fetch(imageData.url);
+      const blob = await response.blob();
+      base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split('base64,')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (error) {
+    console.error('Error converting image to base64:', error);
+    throw new Error('Failed to process image data');
+  }
   
   while (retryCount < MAX_RETRIES) {
     try {
       const requestData = {
         requests: [{
           image: {
-            source: {
-              imageUri: imageData.url
-            }
+            content: base64Data
           },
           features: [
             {
-              type: 'LABEL_DETECTION',
-              maxResults: 10
+              type: 'OBJECT_LOCALIZATION',
+              maxResults: 20
             },
             {
-              type: 'OBJECT_LOCALIZATION',
-              maxResults: 10
+              type: 'LABEL_DETECTION',
+              maxResults: 20
             },
             {
               type: 'IMAGE_PROPERTIES',
               maxResults: 5
+            },
+            {
+              type: 'SAFE_SEARCH_DETECTION'
             }
           ]
         }]
@@ -127,7 +160,12 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
       }
 
       console.log('Successfully received Vision API response');
-      return processVisionResponse(response.data);
+      const result = processVisionResponse(response.data);
+      
+      return {
+        ...result,
+        rawResponse: response.data
+      };
 
     } catch (error) {
       retryCount++;
@@ -148,7 +186,7 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
 
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 403) {
-          throw new Error('API key authentication failed. Please verify that your API key is valid and has the necessary permissions to access the Vision API.');
+          throw new Error('API key authentication failed');
         } else if (error.response?.status === 429) {
           throw new Error('API quota exceeded - please try again later');
         } else if (error.code === 'ECONNABORTED') {
@@ -163,13 +201,10 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
   throw new Error('Maximum retry attempts exceeded');
 };
 
-const processVisionResponse = (response: any): any => {
+const processVisionResponse = (response: any) => {
   const result = response.responses[0];
   
-  // Extract vehicle information
   const vehicleData = extractVehicleData(result);
-  
-  // Extract damage assessment
   const damageAssessment = extractDamageAssessment(result);
   
   return {
@@ -183,12 +218,31 @@ const extractVehicleData = (result: any) => {
   const carLabels = labels.filter(label => 
     ['car', 'vehicle', 'automobile'].includes(label.description.toLowerCase())
   );
+
+  let dominantColor = 'Unknown';
+  if (result.imagePropertiesAnnotation?.dominantColors?.colors) {
+    const colors = result.imagePropertiesAnnotation.dominantColors.colors;
+    if (colors.length > 0) {
+      const mainColor = colors[0].color;
+      const r = mainColor.red || 0;
+      const g = mainColor.green || 0;
+      const b = mainColor.blue || 0;
+      
+      if (Math.max(r, g, b) < 50) dominantColor = 'Black';
+      else if (Math.min(r, g, b) > 200) dominantColor = 'White';
+      else if (r > Math.max(g, b)) dominantColor = 'Red';
+      else if (g > Math.max(r, b)) dominantColor = 'Green';
+      else if (b > Math.max(r, g)) dominantColor = 'Blue';
+      else if (r > 200 && g > 200) dominantColor = 'Yellow';
+      else dominantColor = 'Gray';
+    }
+  }
   
   return {
     make: 'Unknown',
     model: 'Unknown',
     year: new Date().getFullYear(),
-    color: 'Unknown',
+    color: dominantColor,
     confidence: carLabels.length > 0 ? Math.round(carLabels[0].score * 100) : 70
   };
 };
@@ -198,23 +252,48 @@ const extractDamageAssessment = (result: any): DamageAssessment => {
   const objects = result.localizedObjectAnnotations || [];
   
   const damageLabels = labels.filter(label => 
-    ['damage', 'dent', 'scratch', 'collision'].includes(label.description.toLowerCase())
+    ['damage', 'dent', 'scratch', 'collision', 'broken', 'crack'].includes(label.description.toLowerCase())
   );
-  
-  const affectedAreas: DamageArea[] = objects.map(obj => ({
-    name: obj.name,
-    confidence: Math.round(obj.score * 100),
-    coordinates: {
-      x: obj.boundingPoly.normalizedVertices[0].x * 100,
-      y: obj.boundingPoly.normalizedVertices[0].y * 100,
-      width: (obj.boundingPoly.normalizedVertices[1].x - obj.boundingPoly.normalizedVertices[0].x) * 100,
-      height: (obj.boundingPoly.normalizedVertices[2].y - obj.boundingPoly.normalizedVertices[0].y) * 100
+
+  const vehicleParts = objects.filter(obj => 
+    ['Car', 'Vehicle', 'Bumper', 'Door', 'Hood', 'Fender', 'Wheel', 'Headlight', 'Taillight']
+      .includes(obj.name)
+  );
+
+  const affectedAreas: DamageArea[] = vehicleParts.map(part => {
+    const vertices = part.boundingPoly.normalizedVertices;
+    const x = vertices[0].x * 100;
+    const y = vertices[0].y * 100;
+    const width = (vertices[2].x - vertices[0].x) * 100;
+    const height = (vertices[2].y - vertices[0].y) * 100;
+
+    return {
+      name: part.name,
+      confidence: Math.round(part.score * 100),
+      coordinates: {
+        x,
+        y,
+        width,
+        height
+      }
+    };
+  });
+
+  let severity: 'Minor' | 'Moderate' | 'Severe' = 'Moderate';
+  if (result.safeSearchAnnotation) {
+    const violence = result.safeSearchAnnotation.violence;
+    if (violence === 'LIKELY' || violence === 'VERY_LIKELY') {
+      severity = 'Severe';
+    } else if (violence === 'POSSIBLE') {
+      severity = 'Moderate';
+    } else {
+      severity = 'Minor';
     }
-  }));
+  }
 
   return {
     description: 'Vehicle damage detected',
-    severity: 'Moderate',
+    severity,
     confidence: damageLabels.length > 0 ? Math.round(damageLabels[0].score * 100) : 75,
     affectedAreas: affectedAreas.length > 0 ? affectedAreas : getMockAffectedAreas()
   };

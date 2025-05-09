@@ -11,7 +11,7 @@ const DamageOverlay: React.FC<DamageOverlayProps> = ({ areas, containerWidth, co
   return (
     <div className="absolute inset-0 pointer-events-none">
       {areas.map((area, index) => {
-        // Ensure coordinates are within bounds
+        // Calculate relative position and size
         const x = Math.min(Math.max(area.coordinates.x, 0), 100);
         const y = Math.min(Math.max(area.coordinates.y, 0), 100);
         const width = Math.min(area.coordinates.width, 100 - x);
@@ -42,7 +42,7 @@ const DamageOverlay: React.FC<DamageOverlayProps> = ({ areas, containerWidth, co
             className={`absolute border-2 ${confidenceColor} rounded-md transition-all duration-200`}
             style={style}
           >
-            <div className={`absolute -top-6 left-0 ${labelColor} text-white text-xs px-2 py-1 rounded whitespace-nowrap`}>
+            <div className={`absolute -top-6 left-0 ${labelColor} text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10`}>
               {area.name} ({area.confidence}%)
             </div>
           </div>
