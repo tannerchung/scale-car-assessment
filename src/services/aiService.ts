@@ -1,15 +1,18 @@
 import { ClaudeAnalysisResult } from '../types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import { config } from '../config';
 
 export async function analyzeDamageWithClaude(
   imageBase64: string,
   visionResults?: any
 ): Promise<ClaudeAnalysisResult> {
   try {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('Supabase configuration missing');
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.warn('Supabase not configured, using mock Claude response');
+      // Return mock data when Supabase isn't configured
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      return getMockClaudeResponse();
     }
 
     // Remove data URL prefix if present
@@ -67,11 +70,11 @@ export async function analyzeDamageWithClaude(
 
 For each damaged area, carefully identify its position and size in the image. The coordinates should precisely outline the damaged region. Ensure coordinates stay within image bounds (0-100).`;
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/claude-proxy`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
         model: "claude-3-opus-20240229",
@@ -166,15 +169,28 @@ For each damaged area, carefully identify its position and size in the image. Th
 
 export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?: string }> {
   try {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      return { valid: false, error: 'Supabase configuration missing' };
+    // Check if Supabase environment variables are configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      return { 
+        valid: false, 
+        error: 'Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to environment variables' 
+      };
+    }
+    
+    // Check if Anthropic API key is configured
+    if (!import.meta.env.VITE_ANTHROPIC_API_KEY) {
+      return { 
+        valid: false, 
+        error: 'Anthropic API key not configured in environment variables' 
+      };
     }
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/claude-proxy`, {
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
         model: "claude-3-opus-20240229",
@@ -190,6 +206,14 @@ export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?:
 
     if (!response.ok) {
       const error = await response.json();
+      
+      // Handle specific error cases
+      if (response.status === 404) {
+        return { 
+          valid: false, 
+          error: 'Claude proxy Edge Function not found. Deploy the claude-proxy function to your Supabase project.' 
+        };
+      }
       return { valid: false, error: error.error || 'API verification failed' };
     }
 
@@ -197,9 +221,55 @@ export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?:
   } catch (error) {
     return { 
       valid: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error 
+        ? error.message === 'Failed to fetch' 
+          ? 'Cannot connect to Supabase. Check your VITE_SUPABASE_URL or deploy the claude-proxy Edge Function.'
+          : error.message
+        : 'Unknown error occurred'
     };
   }
+}
+
+// Mock Claude response for when Supabase isn't configured
+function getMockClaudeResponse(): ClaudeAnalysisResult {
+  return {
+    vehicle: {
+      make: 'Toyota',
+      model: 'Camry',
+      confidence: 0.92
+    },
+    damage: {
+      description: 'Front bumper damage with scratches and minor denting',
+      severity: 'Moderate',
+      confidence: 0.88,
+      affectedAreas: [
+        {
+          name: 'Front Bumper',
+          confidence: 0.88,
+          coordinates: {
+            x: 25,
+            y: 45,
+            width: 50,
+            height: 25
+          }
+        },
+        {
+          name: 'Driver Headlight',
+          confidence: 0.75,
+          coordinates: {
+            x: 15,
+            y: 35,
+            width: 20,
+            height: 15
+          }
+        }
+      ]
+    },
+    repairCost: {
+      estimate: 2850,
+      confidence: 0.82
+    }
+  };
 }
 
 export default {

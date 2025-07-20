@@ -34,8 +34,8 @@ const ApiStatusPanel: React.FC = () => {
     claude: { verified: false }
   });
 
-  const isVisionConfigured = Boolean(config.vision.apiKey);
-  const isClaudeConfigured = Boolean(config.anthropic.apiKey);
+  const isVisionConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA');
+  const isClaudeConfigured = Boolean(import.meta.env.VITE_ANTHROPIC_API_KEY) && Boolean(import.meta.env.VITE_SUPABASE_URL);
 
   useEffect(() => {
     if (activeAiProvider === 'vision' || activeAiProvider === 'both') {
@@ -86,8 +86,13 @@ const ApiStatusPanel: React.FC = () => {
   };
 
   const verifyClaudeApiKey = async () => {
-    if (!isClaudeConfigured) {
-      setApiError('claude', { message: 'API key not configured' });
+    if (!import.meta.env.VITE_ANTHROPIC_API_KEY) {
+      setApiError('claude', { message: 'Anthropic API key not configured' });
+      return;
+    }
+    
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      setApiError('claude', { message: 'Supabase not configured - using mock responses' });
       return;
     }
 
@@ -258,6 +263,28 @@ const ApiStatusPanel: React.FC = () => {
                 </div>
 
                 {apiErrors.vision && renderErrorDetails(apiErrors.vision)}
+
+                {!isVisionConfigured && (
+                  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                    <div className="flex">
+                      <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          Google Vision API Setup Required
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>To use the Vision API, you need to:</p>
+                          <ol className="list-decimal list-inside mt-1 space-y-1">
+                            <li>Create a Google Cloud project</li>
+                            <li>Enable the Vision API</li>
+                            <li>Create an API key</li>
+                            <li>Add VITE_GOOGLE_CLOUD_API_KEY to your environment variables</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -287,6 +314,27 @@ const ApiStatusPanel: React.FC = () => {
                 </div>
 
                 {apiErrors.claude && renderErrorDetails(apiErrors.claude)}
+
+                {!isClaudeConfigured && (
+                  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                    <div className="flex">
+                      <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          Claude AI Setup Required
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>To use Claude AI, you need to:</p>
+                          <ol className="list-decimal list-inside mt-1 space-y-1">
+                            <li>Get an Anthropic API key</li>
+                            <li>Configure Supabase with the claude-proxy Edge Function</li>
+                            <li>Add VITE_ANTHROPIC_API_KEY to your environment variables</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

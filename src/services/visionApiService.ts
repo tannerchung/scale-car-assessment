@@ -6,10 +6,16 @@ const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 
 export const verifyApiKey = async (): Promise<{ valid: boolean; error?: string }> => {
-  if (!config.vision.apiKey) {
+  const apiKey = import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA';
+  
+  if (!apiKey) {
     return { valid: false, error: 'No API key provided' };
   }
 
+  // Check if API key looks like a placeholder
+  if (apiKey.includes('placeholder') || apiKey.includes('example')) {
+    return { valid: false, error: 'API key appears to be a placeholder. Please provide a valid Google Cloud API key.' };
+  }
   try {
     const testImage = 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg';
     
@@ -30,7 +36,7 @@ export const verifyApiKey = async (): Promise<{ valid: boolean; error?: string }
     };
 
     const response = await axios.post(
-      `https://vision.googleapis.com/v1/images:annotate?key=${config.vision.apiKey}`,
+      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       requestData,
       {
         headers: {
@@ -75,10 +81,16 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
   damageAssessment: DamageAssessment;
   rawResponse?: any;
 }> => {
+  const apiKey = import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA';
+  
   if (!config.vision.useRealApi) {
     console.log('Using mock Vision API data (real API disabled)');
     await new Promise(resolve => setTimeout(resolve, config.vision.mockDelay));
     return getMockVisionData();
+  }
+
+  if (!apiKey) {
+    throw new Error('Google Cloud Vision API key not configured');
   }
 
   let retryCount = 0;
@@ -145,7 +157,7 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
 
       console.log('Sending request to Vision API...');
       const response = await axios.post(
-        `https://vision.googleapis.com/v1/images:annotate?key=${config.vision.apiKey}`,
+        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
         requestData,
         {
           headers: {

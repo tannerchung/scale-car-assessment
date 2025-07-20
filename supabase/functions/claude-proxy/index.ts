@@ -1,4 +1,7 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,54 +12,51 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (!ANTHROPIC_API_KEY) {
-      throw new Error('Missing Anthropic API key');
+      throw new Error('ANTHROPIC_API_KEY is not configured');
     }
 
-    if (req.method !== 'POST') {
-      throw new Error('Method not allowed');
-    }
+    const requestData = await req.json();
 
-    const body = await req.json();
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(requestData)
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.error?.message || 'Failed to process request');
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to call Claude API');
     }
+
+    const data = await response.json();
 
     return new Response(JSON.stringify(data), {
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders
-      }
+        ...corsHeaders,
+      },
     });
   } catch (error) {
     return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders
-        }
+          ...corsHeaders,
+        },
       }
     );
   }

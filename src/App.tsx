@@ -27,8 +27,8 @@ function App() {
                 <Route path="/claims" element={<Claims />} />
                 <Route path="/new-claim" element={<NewClaim />} />
                 <Route path="/claims/:id" element={<ClaimDetails />} />
-                <Route path="/settings" element={<Settings />} />
                 <Route path="/metrics" element={<Metrics />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>
           </div>
