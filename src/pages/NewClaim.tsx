@@ -5,8 +5,10 @@ import Stepper from '../components/Stepper';
 import UploadStep from '../components/steps/UploadStep';
 import PreviewStep from '../components/steps/PreviewStep';
 import ProcessingStep from '../components/steps/ProcessingStep';
+import AgenticProcessingStep from '../components/steps/AgenticProcessingStep';
 import ResultsStep from '../components/steps/ResultsStep';
 import { ImageData } from '../types';
+import { useSettingsStore } from '../store/settingsStore';
 
 const NewClaim: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -17,6 +19,8 @@ const NewClaim: React.FC = () => {
     claude?: any;
   } | null>(null);
   const navigate = useNavigate();
+  const { activeAiProvider } = useSettingsStore();
+  const useAgenticProcessing = activeAiProvider === 'both'; // Use agentic when both providers are selected
 
   const steps = [
     { id: 0, label: 'Upload Photo', icon: '📸' },
@@ -75,10 +79,17 @@ const NewClaim: React.FC = () => {
         )}
         
         {currentStep === 2 && imageData && (
-          <ProcessingStep 
-            imageData={imageData}
-            onComplete={handleProcessingComplete}
-          />
+          useAgenticProcessing ? (
+            <AgenticProcessingStep 
+              imageData={imageData}
+              onComplete={handleProcessingComplete}
+            />
+          ) : (
+            <ProcessingStep 
+              imageData={imageData}
+              onComplete={handleProcessingComplete}
+            />
+          )
         )}
         
         {currentStep === 3 && processingComplete && imageData && (

@@ -4,6 +4,8 @@ import { config, AIProvider } from '../config';
 interface SettingsState {
   activeAiProvider: AIProvider;
   setActiveAiProvider: (provider: AIProvider) => void;
+  useAgenticProcessing: boolean;
+  setUseAgenticProcessing: (enabled: boolean) => void;
   visionApiDebug: boolean;
   setVisionApiDebug: (enabled: boolean) => void;
   anthropicApiDebug: boolean;
@@ -28,6 +30,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setActiveAiProvider: (provider) => {
     localStorage.setItem('activeAiProvider', provider);
     set({ activeAiProvider: provider });
+  },
+  useAgenticProcessing: localStorage.getItem('useAgenticProcessing') === 'true',
+  setUseAgenticProcessing: (enabled) => {
+    localStorage.setItem('useAgenticProcessing', enabled.toString());
+    set({ useAgenticProcessing: enabled });
   },
   visionApiDebug: config.vision.debugMode,
   setVisionApiDebug: (enabled) => {

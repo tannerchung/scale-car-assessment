@@ -232,10 +232,15 @@ const ApiStatusPanel: React.FC = () => {
                 <option key={provider} value={provider}>
                   {provider === 'vision' ? 'Google Vision API Only' :
                    provider === 'claude' ? 'Claude AI Only' :
-                   'Both Providers'}
+                   'Both Providers (Agentic Mode)'}
                 </option>
               ))}
             </select>
+            {activeAiProvider === 'both' && (
+              <p className="mt-2 text-sm text-blue-600">
+                🤖 Agentic mode enabled: Multiple AI agents will collaborate autonomously
+              </p>
+            )}
           </div>
 
           {/* Vision API Status */}
