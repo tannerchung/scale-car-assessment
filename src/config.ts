@@ -1,7 +1,7 @@
 export const config = {
   vision: {
     useRealApi: true,
-    apiKey: import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA',
+    apiKey: import.meta.env.VITE_GOOGLE_CLOUD_API_KEY,
     apiUrl: 'https://vision.googleapis.com/v1/images:annotate',
     mockDelay: 2000,
     debugMode: localStorage.getItem('visionApiDebug') === 'true',
