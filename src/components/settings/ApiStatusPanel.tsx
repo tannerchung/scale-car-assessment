@@ -35,7 +35,6 @@ const ApiStatusPanel: React.FC = () => {
   });
 
   const isVisionConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA');
-  const isVisionConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLOUD_API_KEY);
   const isClaudeConfigured = Boolean(import.meta.env.VITE_ANTHROPIC_API_KEY) && Boolean(import.meta.env.VITE_SUPABASE_URL);
 
   useEffect(() => {
