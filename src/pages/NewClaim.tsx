@@ -6,6 +6,7 @@ import UploadStep from '../components/steps/UploadStep';
 import PreviewStep from '../components/steps/PreviewStep';
 import ProcessingStep from '../components/steps/ProcessingStep';
 import AgenticProcessingStep from '../components/steps/AgenticProcessingStep';
+import AgentReviewStep from '../components/steps/AgentReviewStep';
 import ResultsStep from '../components/steps/ResultsStep';
 import { ImageData } from '../types';
 import { useSettingsStore } from '../store/settingsStore';
@@ -26,7 +27,8 @@ const NewClaim: React.FC = () => {
     { id: 0, label: 'Upload Photo', icon: '📸' },
     { id: 1, label: 'Preview', icon: '👁️' },
     { id: 2, label: 'Processing', icon: '⚙️' },
-    { id: 3, label: 'Results', icon: '📊' },
+    { id: 3, label: 'Agent Review', icon: '🤖' },
+    { id: 4, label: 'Results', icon: '📊' },
   ];
 
   const handleImageUpload = (newImageData: ImageData) => {
@@ -43,6 +45,10 @@ const NewClaim: React.FC = () => {
     setAiResults(results);
     setProcessingComplete(true);
     setCurrentStep(3);
+  };
+
+  const handleAgentReviewComplete = () => {
+    setCurrentStep(4);
   };
 
   const handleReset = () => {
@@ -93,6 +99,15 @@ const NewClaim: React.FC = () => {
         )}
         
         {currentStep === 3 && processingComplete && imageData && (
+          <AgentReviewStep 
+            imageData={imageData}
+            aiResults={aiResults}
+            onContinue={handleAgentReviewComplete}
+            onBack={() => setCurrentStep(2)}
+          />
+        )}
+        
+        {currentStep === 4 && processingComplete && imageData && (
           <ResultsStep 
             imageData={imageData}
             aiResults={aiResults}
