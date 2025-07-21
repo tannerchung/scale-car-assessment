@@ -89,3 +89,4 @@ export async function testSupabaseProxy(): Promise<{
     };
   }
 }
+export async function testSpecificCredentials(
