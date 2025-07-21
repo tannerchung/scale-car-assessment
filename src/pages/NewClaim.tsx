@@ -20,7 +20,8 @@ const NewClaim: React.FC = () => {
   } | null>(null);
   const navigate = useNavigate();
   const { activeAiProvider } = useSettingsStore();
-  const useAgenticProcessing = activeAiProvider === 'both'; // Use agentic when both providers are selected
+  const [useAgenticProcessing, setUseAgenticProcessing] = useState(activeAiProvider === 'both');
+  const [useLangGraph, setUseLangGraph] = useState(false);
 
   const steps = [
     { id: 0, label: 'Upload Photo', icon: '📸' },
@@ -75,6 +76,10 @@ const NewClaim: React.FC = () => {
             imageData={imageData} 
             onConfirm={handleConfirm}
             onBack={() => setCurrentStep(0)}
+            useAgenticProcessing={useAgenticProcessing}
+            setUseAgenticProcessing={setUseAgenticProcessing}
+            useLangGraph={useLangGraph}
+            setUseLangGraph={setUseLangGraph}
           />
         )}
         
@@ -83,6 +88,7 @@ const NewClaim: React.FC = () => {
             <AgenticProcessingStep 
               imageData={imageData}
               onComplete={handleProcessingComplete}
+              useLangGraph={useLangGraph}
             />
           ) : (
             <ProcessingStep 

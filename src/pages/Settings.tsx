@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Save, AlertTriangle } from 'lucide-react';
 import ApiStatusPanel from '../components/settings/ApiStatusPanel';
+import EvaluationDashboard from '../components/evaluation/EvaluationDashboard';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -47,6 +48,14 @@ const Settings = () => {
             API Status
           </h2>
           <ApiStatusPanel />
+        </section>
+
+        {/* Evaluation Dashboard */}
+        <section className="space-y-12">
+          <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-4">
+            AI Evaluation & Performance
+          </h2>
+          <EvaluationDashboard />
         </section>
 
         <form onSubmit={handleSubmit} className="space-y-24">

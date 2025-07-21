@@ -6,9 +6,11 @@ import VehicleMetadata from '../results/VehicleMetadata';
 import DamageAssessment from '../results/DamageAssessment';
 import RepairCosts from '../results/RepairCosts';
 import HistoricalComparison from '../results/HistoricalComparison';
-import { ArrowLeft, Download, Share2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Download, Share2, CheckCircle, Target, TrendingUp, BarChart3 } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useClaims } from '../../context/ClaimsContext';
+import { claimsEvaluator, EvaluationResult } from '../../services/evaluationService';
+import { performanceMonitor } from '../../services/langsmithService';
 
 interface ResultsStepProps {
   imageData: ImageData;
@@ -21,6 +23,8 @@ interface ResultsStepProps {
 
 const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset }) => {
   const [result, setResult] = useState<AssessmentResult | null>(null);
+  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [showEvaluation, setShowEvaluation] = useState(false);
   const { activeAiProvider } = useSettingsStore();
   const { addClaim } = useClaims();
   const navigate = useNavigate();
@@ -44,7 +48,34 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
     }
 
     setResult(baseResult);
+    
+    // Run evaluation if possible
+    runEvaluation(baseResult);
   }, [imageData, aiResults, activeAiProvider]);
+
+  const runEvaluation = async (assessmentResult: AssessmentResult) => {
+    try {
+      // Check if we have sample test cases for evaluation
+      const testCases = claimsEvaluator.getTestCases();
+      if (testCases.length === 0) {
+        // Generate sample test cases if none exist
+        claimsEvaluator.addTestCases(claimsEvaluator.generateSampleTestCases());
+      }
+
+      // For demo purposes, evaluate against the first test case
+      const testCase = testCases[0];
+      if (testCase) {
+        const evaluationResult = await claimsEvaluator.evaluateAssessment(
+          assessmentResult,
+          testCase.groundTruth,
+          `result_${assessmentResult.id}`
+        );
+        setEvaluation(evaluationResult);
+      }
+    } catch (error) {
+      console.warn('Evaluation failed:', error);
+    }
+  };
 
   const mergeVisionResults = (baseResult: AssessmentResult, visionResults: any) => {
     if (visionResults.vehicleData) {
@@ -166,6 +197,125 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
           totalCost={result.repairCost.total}
         />
       </div>
+
+      {/* Evaluation Metrics Section */}
+      {evaluation && (
+        <div className="mb-8">
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="h-5 w-5 text-purple-600" />
+                  <h3 className="text-lg font-medium text-gray-900">AI Evaluation Metrics</h3>
+                </div>
+                <button
+                  onClick={() => setShowEvaluation(!showEvaluation)}
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  {showEvaluation ? 'Hide Details' : 'Show Details'}
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Quick Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-1 mb-1">
+                    <Target className="h-4 w-4 text-green-600" />
+                    <span className="text-2xl font-bold text-green-600">
+                      {evaluation.accuracy.toFixed(1)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Overall Accuracy</p>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-1 mb-1">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    <span className="text-2xl font-bold text-blue-600">
+                      {(evaluation.precision * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Precision</p>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-1 mb-1">
+                    <BarChart3 className="h-4 w-4 text-purple-600" />
+                    <span className="text-2xl font-bold text-purple-600">
+                      {(evaluation.recall * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Recall</p>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-1 mb-1">
+                    <CheckCircle className="h-4 w-4 text-orange-600" />
+                    <span className="text-2xl font-bold text-orange-600">
+                      {(evaluation.f1Score * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">F1 Score</p>
+                </div>
+              </div>
+
+              {/* Detailed Metrics */}
+              {showEvaluation && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 mb-4">Detailed Performance Breakdown</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-700 mb-3">Component Accuracy</h5>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Vehicle ID</span>
+                          <span className="text-sm font-medium">{evaluation.details.vehicleIdentificationAccuracy.toFixed(1)}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Damage Detection</span>
+                          <span className="text-sm font-medium">{evaluation.details.damageDetectionAccuracy.toFixed(1)}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Cost Estimation</span>
+                          <span className="text-sm font-medium">{evaluation.details.costEstimationAccuracy.toFixed(1)}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Coordinate Accuracy</span>
+                          <span className="text-sm font-medium">{evaluation.details.coordinateAccuracy.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-700 mb-3">Detection Matrix</h5>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">True Positives</span>
+                          <span className="text-sm font-medium text-green-600">{evaluation.details.truePositives}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">False Positives</span>
+                          <span className="text-sm font-medium text-red-600">{evaluation.details.falsePositives}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">False Negatives</span>
+                          <span className="text-sm font-medium text-yellow-600">{evaluation.details.falseNegatives}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Model Confidence</span>
+                          <span className="text-sm font-medium">{evaluation.confidence.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <button
