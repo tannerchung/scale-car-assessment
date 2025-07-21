@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2, Brain, Ey
 import visionApiService from '../../services/visionApiService';
 import aiService from '../../services/aiService';
 import { testSupabaseProxy } from '../../services/testSupabaseProxy';
+import { testSpecificCredentials } from '../../services/testSupabaseProxy';
 import { useSettingsStore } from '../../store/settingsStore';
 import { format } from 'date-fns';
 
@@ -40,6 +41,18 @@ const ApiStatusPanel: React.FC = () => {
   });
 
   const [proxyTestResult, setProxyTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+  
+  const [testCredentials, setTestCredentials] = useState({
+    url: '',
+    key: ''
+  });
+  
+  const [isTestingCustom, setIsTestingCustom] = useState(false);
+  const [customTestResult, setCustomTestResult] = useState<{
     success: boolean;
     message: string;
     details?: any;
@@ -167,6 +180,33 @@ const ApiStatusPanel: React.FC = () => {
       }));
     } finally {
       setIsVerifying(prev => ({ ...prev, supabaseProxy: false }));
+    }
+  };
+
+  const testCustomCredentials = async () => {
+    if (!testCredentials.url || !testCredentials.key) {
+      setCustomTestResult({
+        success: false,
+        message: 'Please provide both URL and anon key',
+        details: null
+      });
+      return;
+    }
+
+    setIsTestingCustom(true);
+    setCustomTestResult(null);
+    
+    try {
+      const result = await testSpecificCredentials(testCredentials.url, testCredentials.key);
+      setCustomTestResult(result);
+    } catch (error) {
+      setCustomTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error
+      });
+    } finally {
+      setIsTestingCustom(false);
     }
   };
 
@@ -535,6 +575,93 @@ const ApiStatusPanel: React.FC = () => {
                 </div>
               )}
 
+
+            {/* Custom Credentials Test */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center mb-4">
+                <TestTube className="h-5 w-5 text-blue-500 mr-2" />
+                <h4 className="text-lg font-medium text-gray-900">Test Custom Credentials</h4>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supabase URL
+                  </label>
+                  <input
+                    type="text"
+                    value={testCredentials.url}
+                    onChange={(e) => setTestCredentials(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder="https://your-project.supabase.co"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supabase Anon Key
+                  </label>
+                  <input
+                    type="password"
+                    value={testCredentials.key}
+                    onChange={(e) => setTestCredentials(prev => ({ ...prev, key: e.target.value }))}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                
+                <button
+                  onClick={testCustomCredentials}
+                  disabled={isTestingCustom}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {isTestingCustom ? (
+                    <>
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube className="h-4 w-4 mr-2" />
+                      Test These Credentials
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {customTestResult && (
+                <div className={`mt-4 p-4 rounded-md ${
+                  customTestResult.success 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex">
+                    {customTestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-400" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-400" />
+                    )}
+                    <div className="ml-3">
+                      <h3 className={`text-sm font-medium ${
+                        customTestResult.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {customTestResult.success ? 'Credentials Valid!' : 'Test Failed'}
+                      </h3>
+                      <div className={`mt-2 text-sm ${
+                        customTestResult.success ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        <p>{customTestResult.message}</p>
+                        {customTestResult.details && (
+                          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32">
+                            {JSON.stringify(customTestResult.details, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
               <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
                 <div className="flex">
                   <AlertTriangle className="h-5 w-5 text-blue-400" />
