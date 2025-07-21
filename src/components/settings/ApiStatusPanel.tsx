@@ -233,7 +233,35 @@ const ApiStatusPanel: React.FC = () => {
                     Occurred at: {format(error.timestamp, 'HH:mm:ss')}
                   </p>
                 )}
-                {error.details && visionApiDebug && (
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderErrorDetailsWithDebug = (
+    error: typeof apiErrors.vision | typeof apiErrors.claude,
+    showDebug: boolean
+  ) => {
+    if (!error) return null;
+
+    return (
+      <div className="mt-4 space-y-2">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <XCircle className="h-5 w-5 text-red-400" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error Details</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error.message}</p>
+                {error.timestamp && (
+                  <p className="mt-1 text-xs">
+                    Occurred at: {format(error.timestamp, 'HH:mm:ss')}
+                  </p>
+                )}
+                {error.details && showDebug && (
                   <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto">
                     {JSON.stringify(error.details, null, 2)}
                   </pre>
@@ -308,7 +336,7 @@ const ApiStatusPanel: React.FC = () => {
                   </label>
                 </div>
 
-                {apiErrors.vision && renderErrorDetails(apiErrors.vision)}
+                {apiErrors.vision && renderErrorDetailsWithDebug(apiErrors.vision, visionApiDebug)}
 
                 {!isVisionConfigured && (
                   <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -359,7 +387,7 @@ const ApiStatusPanel: React.FC = () => {
                   </label>
                 </div>
 
-                {apiErrors.claude && renderErrorDetails(apiErrors.claude)}
+                {apiErrors.claude && renderErrorDetailsWithDebug(apiErrors.claude, anthropicApiDebug)}
 
                 {!isClaudeConfigured && (
                   <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
