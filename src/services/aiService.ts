@@ -205,7 +205,22 @@ export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?:
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorText = await response.text();
+        if (errorText) {
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.error || errorMessage;
+          } catch {
+            // If it's not JSON, use the raw text
+            errorMessage = errorText;
+          }
+        }
+      } catch {
+        // If we can't read the response, use the status
+      }
       
       // Handle specific error cases
       if (response.status === 404) {
@@ -214,10 +229,36 @@ export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?:
           error: 'Claude proxy Edge Function not found. Deploy the claude-proxy function to your Supabase project.' 
         };
       }
-      return { valid: false, error: error.error || 'API verification failed' };
+      
+      if (response.status === 401) {
+        return { 
+          valid: false, 
+          error: 'Unauthorized: Check your Supabase anon key or Anthropic API key configuration' 
+        };
+      }
+      
+      return { valid: false, error: errorMessage };
     }
 
-    return { valid: true };
+    try {
+      const data = await response.json();
+      
+      // Check if the response has the expected Claude format
+      if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+        return { valid: true };
+      } else {
+        return { 
+          valid: false, 
+          error: 'Unexpected response format from Claude API' 
+        };
+      }
+    } catch (jsonError) {
+      const responseText = await response.text();
+      return { 
+        valid: false, 
+        error: `Invalid JSON response: ${responseText.substring(0, 200)}${responseText.length > 200 ? '...' : ''}` 
+      };
+    }
   } catch (error) {
     return { 
       valid: false, 
