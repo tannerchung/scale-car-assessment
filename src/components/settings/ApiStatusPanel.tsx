@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { config, AIProvider } from '../../config';
-import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2, Brain, Eye, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2, Brain, Eye, RefreshCw, TestTube } from 'lucide-react';
 import visionApiService from '../../services/visionApiService';
 import aiService from '../../services/aiService';
+import { testSupabaseProxy } from '../../services/testSupabaseProxy';
 import { useSettingsStore } from '../../store/settingsStore';
 import { format } from 'date-fns';
 
@@ -21,18 +22,28 @@ const ApiStatusPanel: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState<{
     vision: boolean;
     claude: boolean;
+    supabaseProxy: boolean;
   }>({
     vision: false,
-    claude: false
+    claude: false,
+    supabaseProxy: false
   });
 
   const [apiStatus, setApiStatus] = useState<{
     vision: { verified: boolean; lastCheck?: number };
     claude: { verified: boolean; lastCheck?: number };
+    supabaseProxy: { verified: boolean; lastCheck?: number };
   }>({
     vision: { verified: false },
-    claude: { verified: false }
+    claude: { verified: false },
+    supabaseProxy: { verified: false }
   });
+
+  const [proxyTestResult, setProxyTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
 
   const isVisionConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA');
   const isClaudeConfigured = Boolean(import.meta.env.VITE_ANTHROPIC_API_KEY) && Boolean(import.meta.env.VITE_SUPABASE_URL);
@@ -126,6 +137,36 @@ const ApiStatusPanel: React.FC = () => {
       });
     } finally {
       setIsVerifying(prev => ({ ...prev, claude: false }));
+    }
+  };
+
+  const testSupabaseProxyConnection = async () => {
+    setIsVerifying(prev => ({ ...prev, supabaseProxy: true }));
+    setProxyTestResult(null);
+    
+    try {
+      const result = await testSupabaseProxy();
+      setProxyTestResult(result);
+      setApiStatus(prev => ({
+        ...prev,
+        supabaseProxy: { 
+          verified: result.success,
+          lastCheck: Date.now()
+        }
+      }));
+    } catch (error) {
+      const errorResult = {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error
+      };
+      setProxyTestResult(errorResult);
+      setApiStatus(prev => ({
+        ...prev,
+        supabaseProxy: { verified: false, lastCheck: Date.now() }
+      }));
+    } finally {
+      setIsVerifying(prev => ({ ...prev, supabaseProxy: false }));
     }
   };
 
@@ -340,6 +381,95 @@ const ApiStatusPanel: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Supabase Proxy Test */}
+          {(activeAiProvider === 'claude' || activeAiProvider === 'both') && (
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <TestTube className="h-5 w-5 text-green-500 mr-2" />
+                  <h4 className="text-lg font-medium text-gray-900">Supabase Proxy Test</h4>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={testSupabaseProxyConnection}
+                    disabled={isVerifying.supabaseProxy}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                  >
+                    {isVerifying.supabaseProxy ? (
+                      <>
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestTube className="h-4 w-4 mr-2" />
+                        Test Proxy
+                      </>
+                    )}
+                  </button>
+                  {apiStatus.supabaseProxy.lastCheck && (
+                    <span className="text-xs text-gray-500">
+                      Last tested: {format(apiStatus.supabaseProxy.lastCheck, 'HH:mm:ss')}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {proxyTestResult && (
+                <div className={`mt-4 p-4 rounded-md ${
+                  proxyTestResult.success 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex">
+                    {proxyTestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-400" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-400" />
+                    )}
+                    <div className="ml-3">
+                      <h3 className={`text-sm font-medium ${
+                        proxyTestResult.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {proxyTestResult.success ? 'Proxy Test Successful' : 'Proxy Test Failed'}
+                      </h3>
+                      <div className={`mt-2 text-sm ${
+                        proxyTestResult.success ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        <p>{proxyTestResult.message}</p>
+                        {proxyTestResult.details && anthropicApiDebug && (
+                          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32">
+                            {JSON.stringify(proxyTestResult.details, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="flex">
+                  <AlertTriangle className="h-5 w-5 text-blue-400" />
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      About the Proxy Test
+                    </h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>This test verifies that:</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>Supabase Edge Function is deployed and accessible</li>
+                        <li>Anthropic API key is configured correctly</li>
+                        <li>Claude API is responding to requests</li>
+                        <li>The proxy is properly forwarding requests and responses</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
