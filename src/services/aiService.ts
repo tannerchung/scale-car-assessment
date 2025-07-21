@@ -226,7 +226,7 @@ export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?:
       if (response.status === 404) {
         return { 
           valid: false, 
-          error: 'Claude proxy Edge Function not found. Deploy the claude-proxy function to your Supabase project.' 
+          error: 'Claude proxy Edge Function not deployed. You need to deploy the claude-proxy function to your Supabase project first.' 
         };
       }
       

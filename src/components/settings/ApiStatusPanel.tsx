@@ -403,7 +403,33 @@ const ApiStatusPanel: React.FC = () => {
                             <li>Get an Anthropic API key</li>
                             <li>Configure Supabase with the claude-proxy Edge Function</li>
                             <li>Add VITE_ANTHROPIC_API_KEY to your environment variables</li>
+                            <li>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables</li>
                           </ol>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show deployment instructions when getting 404 errors */}
+                {apiErrors.claude?.message?.includes('not deployed') && (
+                  <div className="mt-4 bg-orange-50 border border-orange-200 rounded-md p-4">
+                    <div className="flex">
+                      <AlertTriangle className="h-5 w-5 text-orange-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-orange-800">
+                          Edge Function Deployment Required
+                        </h3>
+                        <div className="mt-2 text-sm text-orange-700">
+                          <p>The Claude proxy Edge Function needs to be deployed to your Supabase project:</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                            <li>Install Supabase CLI: <code className="bg-orange-100 px-1 rounded">npm install -g supabase</code></li>
+                            <li>Login to Supabase: <code className="bg-orange-100 px-1 rounded">supabase login</code></li>
+                            <li>Link your project: <code className="bg-orange-100 px-1 rounded">supabase link --project-ref YOUR_PROJECT_ID</code></li>
+                            <li>Deploy the function: <code className="bg-orange-100 px-1 rounded">supabase functions deploy claude-proxy</code></li>
+                            <li>Set your Anthropic API key: <code className="bg-orange-100 px-1 rounded">supabase secrets set ANTHROPIC_API_KEY=your_key_here</code></li>
+                          </ol>
+                          <p className="mt-2">The Edge Function code is already included in your project at <code className="bg-orange-100 px-1 rounded">supabase/functions/claude-proxy/index.ts</code></p>
                         </div>
                       </div>
                     </div>
