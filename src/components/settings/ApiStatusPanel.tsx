@@ -411,6 +411,35 @@ const ApiStatusPanel: React.FC = () => {
                   </div>
                 )}
 
+                {/* Show specific guidance for 401 errors */}
+                {apiErrors.claude?.message?.includes('Authentication failed') && (
+                  <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
+                    <div className="flex">
+                      <XCircle className="h-5 w-5 text-red-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">
+                          Supabase Authentication Error
+                        </h3>
+                        <div className="mt-2 text-sm text-red-700">
+                          <p>The Supabase anon key is invalid or missing. Please check:</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                            <li>Your <code className="bg-red-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> is correctly set in your .env file</li>
+                            <li>The key is the "anon/public" key from your Supabase project settings</li>
+                            <li>Your <code className="bg-red-100 px-1 rounded">VITE_SUPABASE_URL</code> matches your project URL</li>
+                            <li>You've restarted your development server after adding the keys</li>
+                          </ol>
+                          <p className="mt-2">
+                            Find these keys in your Supabase project: 
+                            <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline ml-1">
+                              Dashboard → Settings → API
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Show deployment instructions when getting 404 errors */}
                 {apiErrors.claude?.message?.includes('not deployed') && (
                   <div className="mt-4 bg-orange-50 border border-orange-200 rounded-md p-4">

@@ -233,7 +233,7 @@ export async function verifyAnthropicApiKey(): Promise<{ valid: boolean; error?:
       if (response.status === 401) {
         return { 
           valid: false, 
-          error: 'Unauthorized: Check your Supabase anon key or Anthropic API key configuration' 
+          error: 'Authentication failed: Invalid or missing Supabase anon key. Check VITE_SUPABASE_ANON_KEY in your environment variables.' 
         };
       }
       
