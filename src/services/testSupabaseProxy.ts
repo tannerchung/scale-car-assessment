@@ -89,5 +89,3 @@ export async function testSupabaseProxy(): Promise<{
     };
   }
 }
-
-export { testSupabaseProxy }
