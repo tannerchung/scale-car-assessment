@@ -441,7 +441,7 @@ const ApiStatusPanel: React.FC = () => {
                         proxyTestResult.success ? 'text-green-700' : 'text-red-700'
                       }`}>
                         <p>{proxyTestResult.message}</p>
-                        {proxyTestResult.details && anthropicApiDebug && (
+                        {proxyTestResult.details && (
                           <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32">
                             {JSON.stringify(proxyTestResult.details, null, 2)}
                           </pre>
