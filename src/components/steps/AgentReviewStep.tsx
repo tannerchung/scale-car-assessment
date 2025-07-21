@@ -216,7 +216,7 @@ const AgentReviewStep: React.FC<AgentReviewStepProps> = ({
             </div>
             
             <div className="p-4 space-y-6">
-              {visionApiDebug && aiResults?.vision && (
+              {visionApiDebug && aiResults && aiResults.vision && (
                 <div>
                   <div className="flex items-center mb-3">
                     <Eye className="h-4 w-4 text-blue-400 mr-2" />
@@ -228,7 +228,7 @@ const AgentReviewStep: React.FC<AgentReviewStepProps> = ({
                 </div>
               )}
 
-              {anthropicApiDebug && aiResults?.claude && (
+              {anthropicApiDebug && aiResults && aiResults.claude && (
                 <div>
                   <div className="flex items-center mb-3">
                     <Brain className="h-4 w-4 text-purple-400 mr-2" />
@@ -237,6 +237,19 @@ const AgentReviewStep: React.FC<AgentReviewStepProps> = ({
                   <pre className="text-xs text-gray-300 bg-gray-800 p-3 rounded-lg overflow-auto max-h-64">
                     {JSON.stringify(aiResults.claude, null, 2)}
                   </pre>
+                </div>
+              )}
+              
+              {/* Show debug info even if no data for troubleshooting */}
+              {(visionApiDebug || anthropicApiDebug) && (!aiResults || (!aiResults.vision && !aiResults.claude)) && (
+                <div className="text-yellow-400 text-sm">
+                  <AlertTriangle className="h-4 w-4 inline mr-2" />
+                  No agent data available. Check that processing completed successfully.
+                  {aiResults && (
+                    <div className="mt-2 text-xs text-gray-400">
+                      Available keys: {Object.keys(aiResults).join(', ')}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
