@@ -1,8 +1,7 @@
 import React from 'react';
-import { Eye, EyeOff, Key, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Key, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 const ApiKeyStatus: React.FC = () => {
-  const [showKeys, setShowKeys] = React.useState(false);
 
   const keys = {
     anthropic: import.meta.env.VITE_ANTHROPIC_API_KEY,
@@ -11,11 +10,6 @@ const ApiKeyStatus: React.FC = () => {
     googleVision: import.meta.env.VITE_GOOGLE_CLOUD_API_KEY
   };
 
-  const maskKey = (key: string | undefined) => {
-    if (!key) return 'Not set';
-    if (!showKeys) return `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
-    return key;
-  };
 
   const getKeyStatus = (key: string | undefined) => {
     if (!key) return { icon: <XCircle className="h-4 w-4 text-red-500" />, status: 'Missing' };
@@ -24,18 +18,11 @@ const ApiKeyStatus: React.FC = () => {
 
   return (
     <div className="bg-white shadow rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center mb-4">
         <h3 className="text-lg font-medium text-gray-900 flex items-center">
           <Key className="h-5 w-5 mr-2" />
           API Keys Configuration
         </h3>
-        <button
-          onClick={() => setShowKeys(!showKeys)}
-          className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-        >
-          {showKeys ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-          {showKeys ? 'Hide' : 'Show'} Keys
-        </button>
       </div>
 
       <div className="space-y-4">
@@ -49,7 +36,7 @@ const ApiKeyStatus: React.FC = () => {
           </div>
           <p className="text-sm text-gray-600 mb-2">Required for Claude AI functionality</p>
           <code className="text-xs bg-gray-100 p-2 rounded block">
-            VITE_ANTHROPIC_API_KEY={maskKey(keys.anthropic)}
+            VITE_ANTHROPIC_API_KEY={keys.anthropic ? '***configured***' : 'not_set'}
           </code>
           {!keys.anthropic && (
             <div className="mt-2 text-sm text-amber-600">
@@ -68,7 +55,7 @@ const ApiKeyStatus: React.FC = () => {
           </div>
           <p className="text-sm text-gray-600 mb-2">Your Supabase project URL</p>
           <code className="text-xs bg-gray-100 p-2 rounded block">
-            VITE_SUPABASE_URL={maskKey(keys.supabaseUrl)}
+            VITE_SUPABASE_URL={keys.supabaseUrl ? '***configured***' : 'not_set'}
           </code>
           {!keys.supabaseUrl && (
             <div className="mt-2 text-sm text-amber-600">
@@ -87,7 +74,7 @@ const ApiKeyStatus: React.FC = () => {
           </div>
           <p className="text-sm text-gray-600 mb-2">Public anonymous key for Supabase</p>
           <code className="text-xs bg-gray-100 p-2 rounded block">
-            VITE_SUPABASE_ANON_KEY={maskKey(keys.supabaseAnonKey)}
+            VITE_SUPABASE_ANON_KEY={keys.supabaseAnonKey ? '***configured***' : 'not_set'}
           </code>
           {!keys.supabaseAnonKey && (
             <div className="mt-2 text-sm text-amber-600">
@@ -106,7 +93,7 @@ const ApiKeyStatus: React.FC = () => {
           </div>
           <p className="text-sm text-gray-600 mb-2">Required for Google Vision API functionality</p>
           <code className="text-xs bg-gray-100 p-2 rounded block">
-            VITE_GOOGLE_CLOUD_API_KEY={maskKey(keys.googleVision)}
+            VITE_GOOGLE_CLOUD_API_KEY={keys.googleVision ? '***configured***' : 'not_set'}
           </code>
           {!keys.googleVision && (
             <div className="mt-2 text-sm text-amber-600">
