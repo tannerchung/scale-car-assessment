@@ -18,3 +18,8 @@ export function convertToDottedOrderFormat(data: any): any {
   // No-op implementation
   return data;
 }
+
+export function isRunTree(obj: any): boolean {
+  // Mock implementation - always returns false since we're disabling tracing
+  return false;
+}
