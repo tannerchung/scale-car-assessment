@@ -34,6 +34,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', 'langsmith', 'langchain', '@langchain/core'],
+    exclude: ['lucide-react'],
   },
 });

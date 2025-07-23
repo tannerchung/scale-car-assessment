@@ -5,7 +5,7 @@ export { RunTree, convertToDottedOrderFormat, isRunTree } from './run_trees';
 export { traceable } from './traceable';
 export { getCurrentRunTree } from './singletons/traceable';
 
-export class Client {
+class Client {
   constructor(config?: any) {
     // No-op constructor
   }
@@ -16,27 +16,7 @@ export class Client {
   }
 }
 
-export class RunTree {
-  constructor(config?: any) {
-    // No-op constructor
-  }
-
-  async end(): Promise<void> {
-    // No-op implementation
-  }
-
-  async patch(data: any): Promise<void> {
-    // No-op implementation
-  }
-}
-
-export function traceable<T extends (...args: any[]) => any>(
-  fn: T,
-  config?: any
-): T {
-  // Return the original function without tracing in browser
-  return fn;
-}
+export { Client };
 
 // Performance monitoring
 export interface PerformanceMetrics {
