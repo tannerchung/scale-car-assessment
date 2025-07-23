@@ -8,6 +8,7 @@ import NewClaim from './pages/NewClaim';
 import ClaimDetails from './pages/ClaimDetails';
 import Settings from './pages/Settings';
 import Metrics from './pages/Metrics';
+import EnvDebug from './pages/EnvDebug';
 import { ClaimsProvider } from './context/ClaimsContext';
 import './App.css';
 
@@ -29,6 +30,7 @@ function App() {
                 <Route path="/claims/:id" element={<ClaimDetails />} />
                 <Route path="/metrics" element={<Metrics />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/env-debug" element={<EnvDebug />} />
               </Routes>
             </main>
           </div>
