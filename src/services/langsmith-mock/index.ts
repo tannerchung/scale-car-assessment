@@ -1,5 +1,10 @@
 // Browser-compatible mock for langsmith library main module
 
+// Re-export components from sub-modules to make this a comprehensive mock
+export { RunTree, convertToDottedOrderFormat, isRunTree } from './run_trees';
+export { traceable } from './traceable';
+export { getCurrentRunTree } from './singletons/traceable';
+
 export class Client {
   constructor(config?: any) {
     // No-op constructor
@@ -31,11 +36,6 @@ export function traceable<T extends (...args: any[]) => any>(
 ): T {
   // Return the original function without tracing in browser
   return fn;
-}
-
-export function convertToDottedOrderFormat(data: any): any {
-  // No-op implementation
-  return data;
 }
 
 // Performance monitoring
@@ -119,7 +119,7 @@ export class LangSmithMonitor {
 export const performanceMonitor = new LangSmithMonitor();
 
 // LangSmith configuration
-const langsmithClient = new Client({
+export const langsmithClient = new Client({
   apiUrl: import.meta.env.VITE_LANGSMITH_API_URL || 'https://api.smith.langchain.com',
   apiKey: import.meta.env.VITE_LANGSMITH_API_KEY,
 });
