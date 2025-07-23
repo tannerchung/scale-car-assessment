@@ -7,7 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       'langsmith': '/src/services/langsmith-mock'
-  },
+      },
+  }
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
