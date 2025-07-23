@@ -408,7 +408,7 @@ export class ClaimsEvaluator {
     return [
       {
         id: 'test_001',
-        imageData: { base64: 'sample_image_data_1' },
+        imageData: { base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' },
         groundTruth: {
           vehicle: {
             make: 'Toyota',
@@ -439,7 +439,7 @@ export class ClaimsEvaluator {
       },
       {
         id: 'test_002',
-        imageData: { base64: 'sample_image_data_2' },
+        imageData: { base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' },
         groundTruth: {
           vehicle: {
             make: 'Honda',
