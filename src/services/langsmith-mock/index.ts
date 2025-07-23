@@ -38,7 +38,7 @@ export function convertToDottedOrderFormat(data: any): any {
   return data;
 }
 
-// Mock performance monitoring
+// Performance monitoring
 export interface PerformanceMetrics {
   agentName: string;
   executionTime: number;
@@ -58,7 +58,26 @@ export class LangSmithMonitor {
       ...metrics,
       timestamp: Date.now()
     } as any);
-    // No-op in browser - just store locally
+
+    // Log to LangSmith (mock - does nothing)
+    try {
+      await langsmithClient.createRun({
+        name: `agent_performance_${metrics.agentName}`,
+        run_type: 'llm',
+        inputs: { context: 'agent_performance_tracking' },
+        outputs: { metrics },
+        start_time: Date.now() - metrics.executionTime,
+        end_time: Date.now(),
+        tags: ['agent_performance', metrics.agentName],
+        extra: {
+          confidence: metrics.confidence,
+          success: metrics.success,
+          cost: metrics.cost
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to log to LangSmith:', error);
+    }
   }
 
   getMetrics(): PerformanceMetrics[] {
@@ -96,6 +115,11 @@ export class LangSmithMonitor {
   }
 }
 
-// Singleton instances
+// Singleton monitor instance
 export const performanceMonitor = new LangSmithMonitor();
-export const langsmithClient = new Client();
+
+// LangSmith configuration
+const langsmithClient = new Client({
+  apiUrl: import.meta.env.VITE_LANGSMITH_API_URL || 'https://api.smith.langchain.com',
+  apiKey: import.meta.env.VITE_LANGSMITH_API_KEY,
+});
