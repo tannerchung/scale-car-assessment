@@ -79,6 +79,9 @@ export const traceableAgentExecution = traceable(
   }
 );
 
+// Re-export performanceMonitor for other modules
+export { performanceMonitor };
+
 // Helper function to wrap any async function with tracing
 export function withTracing<T extends (...args: any[]) => Promise<any>>(
   name: string,

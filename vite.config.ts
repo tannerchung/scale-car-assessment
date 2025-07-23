@@ -6,28 +6,10 @@ import path from 'path';
 export default defineConfig({
   plugins: [
     react(),
-    {
-      name: 'langsmith-resolver',
-      resolveId(id) {
-        if (id === 'langsmith') {
-          return path.resolve(__dirname, 'src/services/langsmith-mock/index.ts');
-        }
-        if (id === 'langsmith/run_trees') {
-          return path.resolve(__dirname, 'src/services/langsmith-mock/run_trees.ts');
-        }
-        if (id === 'langsmith/traceable') {
-          return path.resolve(__dirname, 'src/services/langsmith-mock/traceable.ts');
-        }
-        if (id === 'langsmith/singletons/traceable') {
-          return path.resolve(__dirname, 'src/services/langsmith-mock/singletons/traceable.ts');
-        }
-        return null;
-      }
-    }
   ],
   resolve: {
     alias: {
-      'langsmith': '/src/services/langsmith-mock/index.ts',
+      'langsmith': '/src/services/langsmith-mock',
       'langsmith/run_trees': '/src/services/langsmith-mock/run_trees.ts',
       'langsmith/traceable': '/src/services/langsmith-mock/traceable.ts',
       'langsmith/singletons/traceable': '/src/services/langsmith-mock/singletons/traceable.ts'
