@@ -1,5 +1,4 @@
-// Browser-compatible mock for langsmith library
-// This prevents Node.js-specific APIs from being used in the browser
+// Browser-compatible mock for langsmith library main module
 
 export class Client {
   constructor(config?: any) {
@@ -12,12 +11,31 @@ export class Client {
   }
 }
 
+export class RunTree {
+  constructor(config?: any) {
+    // No-op constructor
+  }
+
+  async end(): Promise<void> {
+    // No-op implementation
+  }
+
+  async patch(data: any): Promise<void> {
+    // No-op implementation
+  }
+}
+
 export function traceable<T extends (...args: any[]) => any>(
   fn: T,
   config?: any
 ): T {
   // Return the original function without tracing in browser
   return fn;
+}
+
+export function convertToDottedOrderFormat(data: any): any {
+  // No-op implementation
+  return data;
 }
 
 // Mock performance monitoring
@@ -78,70 +96,6 @@ export class LangSmithMonitor {
   }
 }
 
-// Export mock implementations
+// Singleton instances
 export const performanceMonitor = new LangSmithMonitor();
 export const langsmithClient = new Client();
-
-// Mock traceable functions
-export const traceableClaudeCall = traceable(
-  async (imageBase64: string, prompt: string, model: string = "claude-3-opus-20240229") => {
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2048,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: prompt
-              },
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: "image/jpeg",
-                  data: imageBase64
-                }
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to analyze image');
-    }
-
-    return await response.json();
-  }
-);
-
-export const traceableVisionCall = traceable(
-  async (imageData: any) => {
-    const visionService = await import('./visionApiService');
-    return await visionService.analyzeImage(imageData);
-  }
-);
-
-export const traceableAgentExecution = traceable(
-  async (agentName: string, agentFunction: () => Promise<any>, context: any) => {
-    return await agentFunction();
-  }
-);
-
-export function withTracing<T extends (...args: any[]) => Promise<any>>(
-  name: string,
-  fn: T,
-  tags: string[] = []
-): T {
-  return traceable(fn) as T;
-}

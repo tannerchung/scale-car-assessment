@@ -6,8 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      'langsmith': '/src/services/langsmith-browser-mock.ts',
-      'langsmith/traceable': '/src/services/langsmith-browser-mock.ts'
+      'langsmith': '/src/services/langsmith-mock'
     }
   },
   optimizeDeps: {
