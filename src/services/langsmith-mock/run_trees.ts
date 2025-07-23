@@ -1,16 +1,20 @@
-export function isRunTree(obj: any): boolean {
-  return false;
-}
+// Mock for langsmith/run_trees module
 
 export class RunTree {
-  constructor(...args: any[]) {}
-  async end(...args: any[]) {}
-  async addChild(...args: any[]) {
-    return new RunTree();
+  constructor(config?: any) {
+    // No-op constructor
   }
-  async post(...args: any[]) {}
+
+  async end(): Promise<void> {
+    // No-op implementation
+  }
+
+  async patch(data: any): Promise<void> {
+    // No-op implementation
+  }
 }
 
-export function convertToDottedOrderFormat(...args: any[]): any {
-  return {};
+export function convertToDottedOrderFormat(data: any): any {
+  // No-op implementation
+  return data;
 }
