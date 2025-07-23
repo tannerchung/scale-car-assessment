@@ -5,8 +5,12 @@ export async function testSupabaseProxy(): Promise<{
 }> {
   try {
     // Check if Supabase environment variables are configured
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 
+                        import.meta.env.SUPABASE_URL || 
+                        import.meta.env.VITE_SUPABASE_PROJECT_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 
+                           import.meta.env.SUPABASE_ANON_KEY || 
+                           import.meta.env.VITE_SUPABASE_KEY;
     
     if (!supabaseUrl || !supabaseAnonKey) {
       return {
@@ -16,7 +20,10 @@ export async function testSupabaseProxy(): Promise<{
           hasUrl: Boolean(supabaseUrl),
           hasAnonKey: Boolean(supabaseAnonKey),
           urlValue: supabaseUrl ? 'configured' : 'missing',
-          keyValue: supabaseAnonKey ? 'configured' : 'missing'
+          keyValue: supabaseAnonKey ? 'configured' : 'missing',
+          availableEnvVars: Object.keys(import.meta.env).filter(key => 
+            key.toLowerCase().includes('supabase')
+          )
         }
       };
     }
