@@ -9,10 +9,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      'langsmith': path.resolve(__dirname, 'src/services/langsmith-mock/index.ts'),
-      'langsmith/run_trees': path.resolve(__dirname, 'src/services/langsmith-mock/run_trees.ts'),
-      'langsmith/traceable': path.resolve(__dirname, 'src/services/langsmith-mock/traceable.ts'),
-      'langsmith/singletons/traceable': path.resolve(__dirname, 'src/services/langsmith-mock/singletons/traceable.ts')
+      'langsmith': path.resolve(__dirname, 'src/services/langsmith-mock')
     },
   },
   optimizeDeps: {
