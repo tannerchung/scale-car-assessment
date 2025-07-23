@@ -87,12 +87,21 @@ export class LangGraphAgents {
           
           // Convert imageData to base64 if needed
           let imageBase64 = '';
+          let mediaType = 'image/jpeg'; // default
           if (state.imageData) {
             if (state.imageData.base64) {
               // Already has base64 data
               imageBase64 = state.imageData.base64;
+              // Try to detect media type from data URL prefix
+              if (state.imageData.base64.startsWith('data:image/')) {
+                const match = state.imageData.base64.match(/data:(image\/[^;]+)/);
+                if (match) {
+                  mediaType = match[1];
+                }
+              }
             } else if (state.imageData.file) {
               // Convert File to base64
+              mediaType = state.imageData.file.type || 'image/jpeg';
               imageBase64 = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
@@ -108,6 +117,7 @@ export class LangGraphAgents {
               // Convert URL to base64
               const response = await fetch(state.imageData.url);
               const blob = await response.blob();
+              mediaType = blob.type || 'image/jpeg';
               imageBase64 = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
@@ -126,7 +136,7 @@ export class LangGraphAgents {
             throw new Error('No valid image data available for Claude analysis');
           }
           
-          return await aiService.analyzeDamageWithClaude(imageBase64);
+          return await aiService.analyzeDamageWithClaude(imageBase64, mediaType);
         },
         state
       );

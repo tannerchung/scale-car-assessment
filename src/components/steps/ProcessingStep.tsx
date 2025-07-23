@@ -33,7 +33,9 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
 
         // Convert image to base64 if needed
         let base64Data: string;
+        let mediaType = 'image/jpeg'; // default
         if (imageData.type === 'file' && imageData.file) {
+          mediaType = imageData.file.type || 'image/jpeg';
           base64Data = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
@@ -43,6 +45,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
         } else {
           const response = await fetch(imageData.url);
           const blob = await response.blob();
+          mediaType = blob.type || 'image/jpeg';
           base64Data = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
@@ -80,7 +83,11 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ imageData, onComplete }
         }
 
         if (activeAiProvider === 'claude' || activeAiProvider === 'both') {
-          results.claude = await analyzeDamageWithClaude(base64Data);
+          // Extract base64 data without data URL prefix for Claude
+          const cleanBase64 = base64Data.includes('base64,') 
+            ? base64Data.split('base64,')[1]
+            : base64Data;
+          results.claude = await analyzeDamageWithClaude(cleanBase64, mediaType);
           if (anthropicApiDebug) {
             setApiLogs(prev => [
               ...prev,

@@ -21,7 +21,9 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
 
       // Convert image to base64 if it's a file
       let base64Data: string;
+      let mediaType = 'image/jpeg'; // default
       if (imageData.type === 'file' && imageData.file) {
+        mediaType = imageData.file.type || 'image/jpeg';
         base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -32,6 +34,7 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
         // For URLs, fetch and convert to base64
         const response = await fetch(imageData.url);
         const blob = await response.blob();
+        mediaType = blob.type || 'image/jpeg';
         base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -41,7 +44,11 @@ const UploadStep: React.FC<UploadStepProps> = ({ onImageUpload }) => {
       }
 
       // Analyze image with Claude
-      await analyzeDamageWithClaude(base64Data);
+      // Extract base64 data without data URL prefix for Claude
+      const cleanBase64 = base64Data.includes('base64,') 
+        ? base64Data.split('base64,')[1]
+        : base64Data;
+      await analyzeDamageWithClaude(cleanBase64, mediaType);
 
       // If successful, proceed with the upload
       onImageUpload(imageData);

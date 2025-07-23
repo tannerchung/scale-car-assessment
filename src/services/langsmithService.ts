@@ -5,7 +5,8 @@ export const traceableClaudeCall = traceable(
   async (
     imageBase64: string, 
     prompt: string, 
-    model: string = "claude-3-opus-20240229"
+    model: string = "claude-3-opus-20240229",
+    mediaType: string = "image/jpeg"
   ) => {
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
@@ -28,7 +29,7 @@ export const traceableClaudeCall = traceable(
                 type: "image",
                 source: {
                   type: "base64",
-                  media_type: "image/jpeg",
+                  media_type: mediaType,
                   data: imageBase64
                 }
               }

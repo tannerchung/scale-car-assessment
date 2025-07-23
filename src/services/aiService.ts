@@ -4,6 +4,7 @@ import { traceableClaudeCall, performanceMonitor } from './langsmithService';
 
 export async function analyzeDamageWithClaude(
   imageBase64: string,
+  mediaType: string = 'image/jpeg',
   visionResults?: any
 ): Promise<ClaudeAnalysisResult> {
   const startTime = Date.now();
@@ -81,7 +82,7 @@ export async function analyzeDamageWithClaude(
 
 For each damaged area, carefully identify its position and size in the image. The coordinates should precisely outline the damaged region. Ensure coordinates stay within image bounds (0-100).`;
 
-    const data = await traceableClaudeCall(base64Data, enhancedPrompt, "claude-3-opus-20240229");
+    const data = await traceableClaudeCall(base64Data, enhancedPrompt, "claude-3-opus-20240229", mediaType);
     
     if (!data.content?.[0]?.text) {
       throw new Error('No analysis received from Claude');
