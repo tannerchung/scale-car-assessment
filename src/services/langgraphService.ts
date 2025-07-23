@@ -431,7 +431,8 @@ export function createClaimsProcessingWorkflow() {
       },
       finalResult: null,
       error: null
-    }
+    },
+    recursionLimit: 50
   });
 
   // Add nodes
