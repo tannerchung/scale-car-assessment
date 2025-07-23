@@ -84,7 +84,48 @@ export class LangGraphAgents {
         'claude_analysis_agent',
         async () => {
           const aiService = await import('./aiService');
-          const imageBase64 = state.imageData?.base64 || '';
+          
+          // Convert imageData to base64 if needed
+          let imageBase64 = '';
+          if (state.imageData) {
+            if (state.imageData.base64) {
+              // Already has base64 data
+              imageBase64 = state.imageData.base64;
+            } else if (state.imageData.file) {
+              // Convert File to base64
+              imageBase64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const result = reader.result as string;
+                  // Remove data URL prefix if present
+                  const base64 = result.includes(',') ? result.split(',')[1] : result;
+                  resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(state.imageData!.file!);
+              });
+            } else if (state.imageData.url) {
+              // Convert URL to base64
+              const response = await fetch(state.imageData.url);
+              const blob = await response.blob();
+              imageBase64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const result = reader.result as string;
+                  // Remove data URL prefix if present
+                  const base64 = result.includes(',') ? result.split(',')[1] : result;
+                  resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            }
+          }
+          
+          if (!imageBase64) {
+            throw new Error('No valid image data available for Claude analysis');
+          }
+          
           return await aiService.analyzeDamageWithClaude(imageBase64);
         },
         state
