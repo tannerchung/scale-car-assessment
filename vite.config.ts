@@ -9,6 +9,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      'async_hooks': path.resolve(__dirname, 'src/services/async-hooks-mock.ts'),
       'langsmith': path.resolve(__dirname, 'src/services/langsmith-mock')
     },
   },
