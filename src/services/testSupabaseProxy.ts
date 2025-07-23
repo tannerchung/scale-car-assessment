@@ -5,13 +5,18 @@ export async function testSupabaseProxy(): Promise<{
 }> {
   try {
     // Check if Supabase environment variables are configured
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
       return {
         success: false,
         message: 'Supabase environment variables not configured',
         details: {
-          hasUrl: Boolean(import.meta.env.VITE_SUPABASE_URL),
-          hasAnonKey: Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY)
+          hasUrl: Boolean(supabaseUrl),
+          hasAnonKey: Boolean(supabaseAnonKey),
+          urlValue: supabaseUrl ? 'configured' : 'missing',
+          keyValue: supabaseAnonKey ? 'configured' : 'missing'
         }
       };
     }
@@ -19,11 +24,11 @@ export async function testSupabaseProxy(): Promise<{
     console.log('Testing Supabase Claude proxy...');
     
     // Make a simple test request to the Claude proxy
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
       body: JSON.stringify({
         model: "claude-3-opus-20240229",
