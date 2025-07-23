@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { config, AIProvider } from '../../config';
-import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2, Brain, Eye, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Settings2, Bug, Loader2, Brain, Eye, RefreshCw, TestTube } from 'lucide-react';
 import visionApiService from '../../services/visionApiService';
 import aiService from '../../services/aiService';
+import { testSupabaseProxy } from '../../services/testSupabaseProxy';
+import { testSpecificCredentials } from '../../services/testSupabaseProxy';
 import { useSettingsStore } from '../../store/settingsStore';
 import { format } from 'date-fns';
 
@@ -21,18 +23,40 @@ const ApiStatusPanel: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState<{
     vision: boolean;
     claude: boolean;
+    supabaseProxy: boolean;
   }>({
     vision: false,
-    claude: false
+    claude: false,
+    supabaseProxy: false
   });
 
   const [apiStatus, setApiStatus] = useState<{
     vision: { verified: boolean; lastCheck?: number };
     claude: { verified: boolean; lastCheck?: number };
+    supabaseProxy: { verified: boolean; lastCheck?: number };
   }>({
     vision: { verified: false },
-    claude: { verified: false }
+    claude: { verified: false },
+    supabaseProxy: { verified: false }
   });
+
+  const [proxyTestResult, setProxyTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+  
+  const [testCredentials, setTestCredentials] = useState({
+    url: '',
+    key: ''
+  });
+  
+  const [isTestingCustom, setIsTestingCustom] = useState(false);
+  const [customTestResult, setCustomTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
 
   const isVisionConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || 'AIzaSyBr9T7hFPxNqfPzInbunIPDvs8picr-xxA');
   const isClaudeConfigured = Boolean(import.meta.env.VITE_ANTHROPIC_API_KEY) && Boolean(import.meta.env.VITE_SUPABASE_URL);
@@ -129,6 +153,63 @@ const ApiStatusPanel: React.FC = () => {
     }
   };
 
+  const testSupabaseProxyConnection = async () => {
+    setIsVerifying(prev => ({ ...prev, supabaseProxy: true }));
+    setProxyTestResult(null);
+    
+    try {
+      const result = await testSupabaseProxy();
+      setProxyTestResult(result);
+      setApiStatus(prev => ({
+        ...prev,
+        supabaseProxy: { 
+          verified: result.success,
+          lastCheck: Date.now()
+        }
+      }));
+    } catch (error) {
+      const errorResult = {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error
+      };
+      setProxyTestResult(errorResult);
+      setApiStatus(prev => ({
+        ...prev,
+        supabaseProxy: { verified: false, lastCheck: Date.now() }
+      }));
+    } finally {
+      setIsVerifying(prev => ({ ...prev, supabaseProxy: false }));
+    }
+  };
+
+  const testCustomCredentials = async () => {
+    if (!testCredentials.url || !testCredentials.key) {
+      setCustomTestResult({
+        success: false,
+        message: 'Please provide both URL and anon key',
+        details: null
+      });
+      return;
+    }
+
+    setIsTestingCustom(true);
+    setCustomTestResult(null);
+    
+    try {
+      const result = await testSpecificCredentials(testCredentials.url, testCredentials.key);
+      setCustomTestResult(result);
+    } catch (error) {
+      setCustomTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error
+      });
+    } finally {
+      setIsTestingCustom(false);
+    }
+  };
+
   const renderApiStatus = (
     provider: 'vision' | 'claude',
     isConfigured: boolean,
@@ -192,7 +273,35 @@ const ApiStatusPanel: React.FC = () => {
                     Occurred at: {format(error.timestamp, 'HH:mm:ss')}
                   </p>
                 )}
-                {error.details && visionApiDebug && (
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderErrorDetailsWithDebug = (
+    error: typeof apiErrors.vision | typeof apiErrors.claude,
+    showDebug: boolean
+  ) => {
+    if (!error) return null;
+
+    return (
+      <div className="mt-4 space-y-2">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <XCircle className="h-5 w-5 text-red-400" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error Details</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error.message}</p>
+                {error.timestamp && (
+                  <p className="mt-1 text-xs">
+                    Occurred at: {format(error.timestamp, 'HH:mm:ss')}
+                  </p>
+                )}
+                {error.details && showDebug && (
                   <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto">
                     {JSON.stringify(error.details, null, 2)}
                   </pre>
@@ -267,7 +376,7 @@ const ApiStatusPanel: React.FC = () => {
                   </label>
                 </div>
 
-                {apiErrors.vision && renderErrorDetails(apiErrors.vision)}
+                {apiErrors.vision && renderErrorDetailsWithDebug(apiErrors.vision, visionApiDebug)}
 
                 {!isVisionConfigured && (
                   <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -318,7 +427,7 @@ const ApiStatusPanel: React.FC = () => {
                   </label>
                 </div>
 
-                {apiErrors.claude && renderErrorDetails(apiErrors.claude)}
+                {apiErrors.claude && renderErrorDetailsWithDebug(apiErrors.claude, anthropicApiDebug)}
 
                 {!isClaudeConfigured && (
                   <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -334,12 +443,243 @@ const ApiStatusPanel: React.FC = () => {
                             <li>Get an Anthropic API key</li>
                             <li>Configure Supabase with the claude-proxy Edge Function</li>
                             <li>Add VITE_ANTHROPIC_API_KEY to your environment variables</li>
+                            <li>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables</li>
                           </ol>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
+
+                {/* Show specific guidance for 401 errors */}
+                {apiErrors.claude?.message?.includes('Authentication failed') && (
+                  <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
+                    <div className="flex">
+                      <XCircle className="h-5 w-5 text-red-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">
+                          Supabase Authentication Error
+                        </h3>
+                        <div className="mt-2 text-sm text-red-700">
+                          <p>The Supabase anon key is invalid or missing. Please check:</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                            <li>Your <code className="bg-red-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> is correctly set in your .env file</li>
+                            <li>The key is the "anon/public" key from your Supabase project settings</li>
+                            <li>Your <code className="bg-red-100 px-1 rounded">VITE_SUPABASE_URL</code> matches your project URL</li>
+                            <li>You've restarted your development server after adding the keys</li>
+                          </ol>
+                          <p className="mt-2">
+                            Find these keys in your Supabase project: 
+                            <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline ml-1">
+                              Dashboard → Settings → API
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show deployment instructions when getting 404 errors */}
+                {apiErrors.claude?.message?.includes('not deployed') && (
+                  <div className="mt-4 bg-orange-50 border border-orange-200 rounded-md p-4">
+                    <div className="flex">
+                      <AlertTriangle className="h-5 w-5 text-orange-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-orange-800">
+                          Edge Function Deployment Required
+                        </h3>
+                        <div className="mt-2 text-sm text-orange-700">
+                          <p>The Claude proxy Edge Function needs to be deployed to your Supabase project:</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                            <li>Install Supabase CLI: <code className="bg-orange-100 px-1 rounded">npm install -g supabase</code></li>
+                            <li>Login to Supabase: <code className="bg-orange-100 px-1 rounded">supabase login</code></li>
+                            <li>Link your project: <code className="bg-orange-100 px-1 rounded">supabase link --project-ref YOUR_PROJECT_ID</code></li>
+                            <li>Deploy the function: <code className="bg-orange-100 px-1 rounded">supabase functions deploy claude-proxy</code></li>
+                            <li>Set your Anthropic API key: <code className="bg-orange-100 px-1 rounded">supabase secrets set ANTHROPIC_API_KEY=your_key_here</code></li>
+                          </ol>
+                          <p className="mt-2">The Edge Function code is already included in your project at <code className="bg-orange-100 px-1 rounded">supabase/functions/claude-proxy/index.ts</code></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Supabase Proxy Test */}
+          {(activeAiProvider === 'claude' || activeAiProvider === 'both') && (
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <TestTube className="h-5 w-5 text-green-500 mr-2" />
+                  <h4 className="text-lg font-medium text-gray-900">Supabase Proxy Test</h4>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={testSupabaseProxyConnection}
+                    disabled={isVerifying.supabaseProxy}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                  >
+                    {isVerifying.supabaseProxy ? (
+                      <>
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestTube className="h-4 w-4 mr-2" />
+                        Test Proxy
+                      </>
+                    )}
+                  </button>
+                  {apiStatus.supabaseProxy.lastCheck && (
+                    <span className="text-xs text-gray-500">
+                      Last tested: {format(apiStatus.supabaseProxy.lastCheck, 'HH:mm:ss')}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {proxyTestResult && (
+                <div className={`mt-4 p-4 rounded-md ${
+                  proxyTestResult.success 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex">
+                    {proxyTestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-400" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-400" />
+                    )}
+                    <div className="ml-3">
+                      <h3 className={`text-sm font-medium ${
+                        proxyTestResult.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {proxyTestResult.success ? 'Proxy Test Successful' : 'Proxy Test Failed'}
+                      </h3>
+                      <div className={`mt-2 text-sm ${
+                        proxyTestResult.success ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        <p>{proxyTestResult.message}</p>
+                        {proxyTestResult.details && (
+                          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32">
+                            {JSON.stringify(proxyTestResult.details, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+            {/* Custom Credentials Test */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center mb-4">
+                <TestTube className="h-5 w-5 text-blue-500 mr-2" />
+                <h4 className="text-lg font-medium text-gray-900">Test Custom Credentials</h4>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supabase URL
+                  </label>
+                  <input
+                    type="text"
+                    value={testCredentials.url}
+                    onChange={(e) => setTestCredentials(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder="https://your-project.supabase.co"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supabase Anon Key
+                  </label>
+                  <input
+                    type="password"
+                    value={testCredentials.key}
+                    onChange={(e) => setTestCredentials(prev => ({ ...prev, key: e.target.value }))}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                
+                <button
+                  onClick={testCustomCredentials}
+                  disabled={isTestingCustom}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {isTestingCustom ? (
+                    <>
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube className="h-4 w-4 mr-2" />
+                      Test These Credentials
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {customTestResult && (
+                <div className={`mt-4 p-4 rounded-md ${
+                  customTestResult.success 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex">
+                    {customTestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-400" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-400" />
+                    )}
+                    <div className="ml-3">
+                      <h3 className={`text-sm font-medium ${
+                        customTestResult.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {customTestResult.success ? 'Credentials Valid!' : 'Test Failed'}
+                      </h3>
+                      <div className={`mt-2 text-sm ${
+                        customTestResult.success ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        <p>{customTestResult.message}</p>
+                        {customTestResult.details && (
+                          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32">
+                            {JSON.stringify(customTestResult.details, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="flex">
+                  <AlertTriangle className="h-5 w-5 text-blue-400" />
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      About the Proxy Test
+                    </h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>This test verifies that:</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>Supabase Edge Function is deployed and accessible</li>
+                        <li>Anthropic API key is configured correctly</li>
+                        <li>Claude API is responding to requests</li>
+                        <li>The proxy is properly forwarding requests and responses</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

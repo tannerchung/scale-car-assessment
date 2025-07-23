@@ -6,7 +6,8 @@ import VehicleMetadata from '../results/VehicleMetadata';
 import DamageAssessment from '../results/DamageAssessment';
 import RepairCosts from '../results/RepairCosts';
 import HistoricalComparison from '../results/HistoricalComparison';
-import { ArrowLeft, Download, Share2, CheckCircle, Target, TrendingUp, BarChart3 } from 'lucide-react';
+
+import { ArrowLeft, Download, Share2, CheckCircle, Target, TrendingUp, BarChart3, Bug, Brain, Eye, Calculator, Shield  } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useClaims } from '../../context/ClaimsContext';
 import { claimsEvaluator, EvaluationResult } from '../../services/evaluationService';
@@ -17,6 +18,7 @@ interface ResultsStepProps {
   aiResults?: {
     vision?: any;
     claude?: any;
+    agentic?: any;
   };
   onReset: () => void;
 }
@@ -25,7 +27,8 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [showEvaluation, setShowEvaluation] = useState(false);
-  const { activeAiProvider } = useSettingsStore();
+  const { activeAiProvider, visionApiDebug, anthropicApiDebug } = useSettingsStore();
+
   const { addClaim } = useClaims();
   const navigate = useNavigate();
   
@@ -216,7 +219,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               {/* Quick Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -229,7 +232,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
                   </div>
                   <p className="text-xs text-gray-500">Overall Accuracy</p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="flex items-center justify-center space-x-1 mb-1">
                     <TrendingUp className="h-4 w-4 text-blue-600" />
@@ -239,7 +242,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
                   </div>
                   <p className="text-xs text-gray-500">Precision</p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="flex items-center justify-center space-x-1 mb-1">
                     <BarChart3 className="h-4 w-4 text-purple-600" />
@@ -249,7 +252,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
                   </div>
                   <p className="text-xs text-gray-500">Recall</p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="flex items-center justify-center space-x-1 mb-1">
                     <CheckCircle className="h-4 w-4 text-orange-600" />
@@ -287,7 +290,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
                         </div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h5 className="text-xs font-medium text-gray-700 mb-3">Detection Matrix</h5>
                       <div className="space-y-3">
@@ -317,6 +320,133 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
         </div>
       )}
 
+      {/* Debug Information Section */}
+      {(visionApiDebug || anthropicApiDebug) && aiResults && (
+        <div className="mb-8 space-y-6">
+          <div className="bg-gray-900 rounded-lg overflow-hidden">
+            <div className="bg-gray-800 px-4 py-3 flex items-center">
+              <Bug className="h-5 w-5 text-green-400 mr-2" />
+              <h3 className="text-lg font-medium text-green-400">Debug Information</h3>
+            </div>
+
+            <div className="p-4 space-y-6">
+              {visionApiDebug && aiResults.vision && (
+                <div>
+                  <div className="flex items-center mb-3">
+                    <Eye className="h-4 w-4 text-blue-400 mr-2" />
+                    <h4 className="text-sm font-medium text-blue-400">Vision API Output</h4>
+                  </div>
+                  <pre className="text-xs text-gray-300 bg-gray-800 p-3 rounded-lg overflow-auto max-h-64">
+                    {JSON.stringify(aiResults.vision, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {anthropicApiDebug && aiResults.claude && (
+                <div>
+                  <div className="flex items-center mb-3">
+                    <Brain className="h-4 w-4 text-purple-400 mr-2" />
+                    <h4 className="text-sm font-medium text-purple-400">Claude AI Output</h4>
+                  </div>
+                  <pre className="text-xs text-gray-300 bg-gray-800 p-3 rounded-lg overflow-auto max-h-64">
+                    {JSON.stringify(aiResults.claude, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {aiResults.agentic && (
+                <div>
+                  <div className="flex items-center mb-3">
+                    <Brain className="h-4 w-4 text-green-400 mr-2" />
+                    <h4 className="text-sm font-medium text-green-400">Agentic Processing Summary</h4>
+                  </div>
+                  <div className="bg-gray-800 p-3 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                      <div className="text-center">
+                        <div className="text-green-400 font-semibold">Overall Confidence</div>
+                        <div className="text-white text-lg">{aiResults.agentic.confidence}%</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-blue-400 font-semibold">Iterations</div>
+                        <div className="text-white text-lg">{aiResults.agentic.iterations}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-purple-400 font-semibold">Agents Used</div>
+                        <div className="text-white text-lg">{aiResults.agentic.agentsUsed}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-yellow-400 font-semibold">Processing Time</div>
+                        <div className="text-white text-lg">{aiResults.agentic.processingTime}</div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-700">
+                      <div className="text-xs text-gray-400 mb-2">Quality Score: 
+                        <span className="text-green-400 ml-1 font-semibold">{aiResults.agentic.qualityScore}</span>
+                      </div>
+                      <div className="text-xs text-gray-300">{aiResults.agentic.reasoning}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center mb-3">
+                  <CheckCircle className="h-4 w-4 text-green-400 mr-2" />
+                  <h4 className="text-sm font-medium text-green-400">Final Assessment Report</h4>
+                </div>
+                <div className="bg-gray-800 p-3 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <div className="text-blue-400 font-semibold mb-2">Vehicle Identification</div>
+                      <div className="text-gray-300">
+                        <div>Make: {result.vehicle.make}</div>
+                        <div>Model: {result.vehicle.model}</div>
+                        <div>Year: {result.vehicle.year}</div>
+                        <div>Color: {result.vehicle.color}</div>
+                        <div>Confidence: {result.vehicle.confidence}%</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-yellow-400 font-semibold mb-2">Damage Analysis</div>
+                      <div className="text-gray-300">
+                        <div>Severity: {result.damage.severity}</div>
+                        <div>Confidence: {result.damage.confidence}%</div>
+                        <div>Areas: {result.damage.affectedAreas.length}</div>
+                        <div>Avg Area Confidence: {Math.round(result.damage.affectedAreas.reduce((sum, area) => sum + area.confidence, 0) / result.damage.affectedAreas.length)}%</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-green-400 font-semibold mb-2">Cost Estimation</div>
+                      <div className="text-gray-300">
+                        <div>Total: ${result.repairCost.total.toLocaleString()}</div>
+                        <div>Region: {result.repairCost.region.name}</div>
+                        <div>Labor Rate: ${result.repairCost.region.laborRate}/hr</div>
+                        <div>Parts Index: {(result.repairCost.region.partsCostIndex * 100).toFixed(0)}%</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <div className="text-xs text-gray-400 mb-2">AI Confidence Summary:</div>
+                    <div className="text-xs text-gray-300">
+                      Level: <span className="text-blue-400">{result.aiConfidence.level}</span> | 
+                      Score: <span className="text-green-400">{result.aiConfidence.score}%</span> | 
+                      Review Type: <span className="text-yellow-400">{result.aiConfidence.reviewType}</span> | 
+                      Processing Time: <span className="text-purple-400">{result.aiConfidence.processingTime}min</span>
+                      {result.aiConfidence.escalationReason && (
+                        <span> | Escalation: <span className="text-red-400">{result.aiConfidence.escalationReason}</span></span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <button
           type="button"
