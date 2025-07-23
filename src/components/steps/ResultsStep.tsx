@@ -443,10 +443,6 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ imageData, aiResults, onReset
           </div>
         </div>
       )}
-            </div>
-          </div>
-        </div>
-      )}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <button
           type="button"
