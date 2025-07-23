@@ -1,17 +1,28 @@
 import { ClaudeAnalysisResult } from '../types';
-
 import { config } from '../config';
+import { traceableClaudeCall, performanceMonitor } from './langsmithService';
 
 export async function analyzeDamageWithClaude(
   imageBase64: string,
   visionResults?: any
 ): Promise<ClaudeAnalysisResult> {
+  const startTime = Date.now();
+  
   try {
     // Check if Supabase is configured
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
       console.warn('Supabase not configured, using mock Claude response');
       // Return mock data when Supabase isn't configured
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      
+      const executionTime = Date.now() - startTime;
+      await performanceMonitor.logAgentPerformance({
+        agentName: 'claude_analysis_mock',
+        executionTime,
+        confidence: 75, // Mock confidence
+        success: true
+      });
+      
       return getMockClaudeResponse();
     }
 
@@ -70,43 +81,7 @@ export async function analyzeDamageWithClaude(
 
 For each damaged area, carefully identify its position and size in the image. The coordinates should precisely outline the damaged region. Ensure coordinates stay within image bounds (0-100).`;
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({
-        model: "claude-3-opus-20240229",
-        max_tokens: 2048,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: enhancedPrompt
-              },
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: "image/jpeg",
-                  data: base64Data
-                }
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to analyze image');
-    }
-
-    const data = await response.json();
+    const data = await traceableClaudeCall(base64Data, enhancedPrompt, "claude-3-opus-20240229");
     
     if (!data.content?.[0]?.text) {
       throw new Error('No analysis received from Claude');
@@ -138,10 +113,29 @@ For each damaged area, carefully identify its position and size in the image. Th
         }
       }));
 
+      const executionTime = Date.now() - startTime;
+      await performanceMonitor.logAgentPerformance({
+        agentName: 'claude_analysis_agent',
+        executionTime,
+        confidence: parsedData.damage?.confidence || 0,
+        success: true,
+        inputTokens: Math.ceil(enhancedPrompt.length / 4), // Approximate token count
+        outputTokens: Math.ceil(rawResponse.length / 4)
+      });
+
       return parsedData;
     } catch (parseError) {
       console.error('Failed to parse Claude response:', rawResponse);
       console.error('Parse error:', parseError);
+
+      const executionTime = Date.now() - startTime;
+      await performanceMonitor.logAgentPerformance({
+        agentName: 'claude_analysis_agent',
+        executionTime,
+        confidence: 0,
+        success: false,
+        errorMessage: `Parse error: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`
+      });
 
       return {
         vehicle: {
@@ -162,6 +156,15 @@ For each damaged area, carefully identify its position and size in the image. Th
       };
     }
   } catch (error) {
+    const executionTime = Date.now() - startTime;
+    await performanceMonitor.logAgentPerformance({
+      agentName: 'claude_analysis_agent',
+      executionTime,
+      confidence: 0,
+      success: false,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
     console.error("Error analyzing image with Claude:", error);
     throw error;
   }

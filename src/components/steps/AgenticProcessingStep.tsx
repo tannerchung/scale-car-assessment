@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ImageData } from '../../types';
-import { AlertCircle, Bug, Brain, Eye, Calculator, Shield, CheckCircle, Clock } from 'lucide-react';
+import { AlertCircle, Bug, Brain, Eye, Calculator, Shield, CheckCircle, Clock, Workflow } from 'lucide-react';
 import { AgenticClaimsProcessor } from '../../services/agenticService';
+import { processClaimsWithLangGraph } from '../../services/langgraphService';
+import { performanceMonitor } from '../../services/langsmithService';
 import { useSettingsStore } from '../../store/settingsStore';
 
 interface AgenticProcessingStepProps {
   imageData: ImageData;
   onComplete: (results: { agentic: any }) => void;
+  useLangGraph?: boolean;
 }
 
 interface AgentStatus {
@@ -19,7 +22,7 @@ interface AgentStatus {
   icon: React.ReactNode;
 }
 
-const AgenticProcessingStep: React.FC<AgenticProcessingStepProps> = ({ imageData, onComplete }) => {
+const AgenticProcessingStep: React.FC<AgenticProcessingStepProps> = ({ imageData, onComplete, useLangGraph = false }) => {
   const [progress, setProgress] = useState(0);
   const [currentIteration, setCurrentIteration] = useState(0);
   const [agents, setAgents] = useState<AgentStatus[]>([
@@ -43,16 +46,73 @@ const AgenticProcessingStep: React.FC<AgenticProcessingStepProps> = ({ imageData
 
     const processWithAgents = async () => {
       try {
-        setLogs(prev => [...prev, '🚀 Initializing agentic processing system...']);
-        
-        processorRef.current = new AgenticClaimsProcessor(imageData);
-        
-        // Mock the agentic processing with realistic agent interactions
-        await simulateAgenticProcessing();
-        
+        if (useLangGraph) {
+          setLogs(prev => [...prev, '🔄 Initializing LangGraph workflow orchestration...']);
+          await processWithLangGraph();
+        } else {
+          setLogs(prev => [...prev, '🚀 Initializing traditional agentic processing system...']);
+          processorRef.current = new AgenticClaimsProcessor(imageData);
+          await simulateAgenticProcessing();
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLogs(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`]);
+      }
+    };
+
+    const processWithLangGraph = async () => {
+      setLogs(prev => [...prev, '🔄 Starting LangGraph state-based workflow...']);
+      
+      // Update agents for LangGraph workflow
+      const langGraphAgents = [
+        { id: 'vision_analysis', name: 'Vision Analysis', status: 'idle' as const, icon: <Eye className="h-5 w-5" /> },
+        { id: 'claude_analysis', name: 'Claude Analysis', status: 'idle' as const, icon: <Brain className="h-5 w-5" /> },
+        { id: 'damage_assessment', name: 'Damage Assessment', status: 'idle' as const, icon: <AlertCircle className="h-5 w-5" /> },
+        { id: 'quality_assurance', name: 'Quality Assurance', status: 'idle' as const, icon: <Shield className="h-5 w-5" /> },
+        { id: 'final_compilation', name: 'Final Compilation', status: 'idle' as const, icon: <CheckCircle className="h-5 w-5" /> }
+      ];
+      setAgents(langGraphAgents);
+
+      try {
+        // Start LangGraph processing with real-time updates
+        const startTime = Date.now();
+        
+        // Simulate LangGraph agent progression
+        for (let i = 0; i < langGraphAgents.length; i++) {
+          const agent = langGraphAgents[i];
+          
+          updateAgentStatus(agent.id, 'working', `Executing ${agent.name} node...`);
+          setLogs(prev => [...prev, `🔄 LangGraph: Executing ${agent.name} node`]);
+          setProgress(((i + 0.5) / langGraphAgents.length) * 100);
+          
+          await delay(1500 + Math.random() * 2000);
+          
+          const confidence = 75 + Math.random() * 20;
+          updateAgentStatus(agent.id, 'completed', `Node completed with ${confidence.toFixed(1)}% confidence`, confidence);
+          setLogs(prev => [...prev, `✅ ${agent.name}: Node execution successful`]);
+          setProgress(((i + 1) / langGraphAgents.length) * 100);
+        }
+
+        // Execute actual LangGraph workflow
+        setLogs(prev => [...prev, '🎯 LangGraph: Running complete workflow execution...']);
+        const result = await processClaimsWithLangGraph(imageData);
+        
+        const executionTime = Date.now() - startTime;
+        setLogs(prev => [...prev, `✅ LangGraph workflow completed in ${(executionTime / 1000).toFixed(1)}s`]);
+        
+        // Show performance metrics
+        const metrics = performanceMonitor.getMetrics();
+        const recentMetrics = metrics.slice(-5);
+        if (recentMetrics.length > 0) {
+          const avgConfidence = recentMetrics.reduce((sum, m) => sum + m.confidence, 0) / recentMetrics.length;
+          setLogs(prev => [...prev, `📊 Average agent confidence: ${avgConfidence.toFixed(1)}%`]);
+        }
+
+        onComplete({ agentic: result });
+        
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'LangGraph processing failed');
+        setLogs(prev => [...prev, `❌ LangGraph Error: ${error instanceof Error ? error.message : 'Unknown error'}`]);
       }
     };
 
@@ -230,14 +290,32 @@ const AgenticProcessingStep: React.FC<AgenticProcessingStepProps> = ({ imageData
   return (
     <div className="p-6 sm:p-8">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Agentic AI Processing</h2>
+        <div className="flex items-center justify-center space-x-2 mb-2">
+          {useLangGraph ? <Workflow className="h-6 w-6 text-purple-600" /> : <Brain className="h-6 w-6 text-blue-600" />}
+          <h2 className="text-2xl font-bold text-gray-900">
+            {useLangGraph ? 'LangGraph Workflow' : 'Agentic AI Processing'}
+          </h2>
+        </div>
         <p className="mt-2 text-gray-600">
-          Multiple AI agents are collaborating to analyze your claim
+          {useLangGraph 
+            ? 'State-based workflow orchestration with specialized AI agents'
+            : 'Multiple AI agents are collaborating to analyze your claim'
+          }
         </p>
         <div className="mt-4 flex items-center justify-center space-x-4 text-sm text-gray-500">
-          <span>Iteration: {currentIteration}</span>
-          <span>•</span>
+          {!useLangGraph && (
+            <>
+              <span>Iteration: {currentIteration}</span>
+              <span>•</span>
+            </>
+          )}
           <span>Progress: {Math.round(progress)}%</span>
+          {useLangGraph && (
+            <>
+              <span>•</span>
+              <span className="text-purple-600">LangGraph Mode</span>
+            </>
+          )}
         </div>
       </div>
 

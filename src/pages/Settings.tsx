@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Save, AlertTriangle } from 'lucide-react';
 import ApiStatusPanel from '../components/settings/ApiStatusPanel';
+import EvaluationDashboard from '../components/evaluation/EvaluationDashboard';
 import ApiKeyStatus from '../components/settings/ApiKeyStatus';
+
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -49,13 +51,12 @@ const Settings = () => {
           </h2>
           <ApiStatusPanel />
         </section>
-
-        {/* API Keys Configuration */}
+        {/* Evaluation Dashboard */}
         <section className="space-y-12">
           <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-4">
-            API Keys
+            AI Evaluation & Performance
           </h2>
-          <ApiKeyStatus />
+          <EvaluationDashboard />
         </section>
 
         <form onSubmit={handleSubmit} className="space-y-24">

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ImageData, DamageAssessment, DamageArea } from '../types';
 import { config } from '../config';
+import { traceableVisionCall, performanceMonitor } from './langsmithService';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
@@ -77,11 +78,21 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
   damageAssessment: DamageAssessment;
   rawResponse?: any;
 }> => {
+  const startTime = Date.now();
   const apiKey = import.meta.env.VITE_GOOGLE_CLOUD_API_KEY;
   
   if (!config.vision.useRealApi) {
     console.log('Using mock Vision API data (real API disabled)');
     await new Promise(resolve => setTimeout(resolve, config.vision.mockDelay));
+    
+    const executionTime = Date.now() - startTime;
+    await performanceMonitor.logAgentPerformance({
+      agentName: 'vision_analysis_mock',
+      executionTime,
+      confidence: 80, // Mock confidence
+      success: true
+    });
+    
     return getMockVisionData();
   }
 
@@ -170,6 +181,14 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
       console.log('Successfully received Vision API response');
       const result = processVisionResponse(response.data);
       
+      const executionTime = Date.now() - startTime;
+      await performanceMonitor.logAgentPerformance({
+        agentName: 'vision_analysis_agent',
+        executionTime,
+        confidence: result.vehicleData.confidence,
+        success: true
+      });
+      
       return {
         ...result,
         rawResponse: response.data
@@ -202,9 +221,27 @@ export const analyzeImage = async (imageData: ImageData): Promise<{
         }
       }
 
+      const executionTime = Date.now() - startTime;
+      await performanceMonitor.logAgentPerformance({
+        agentName: 'vision_analysis_agent',
+        executionTime,
+        confidence: 0,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
       throw error;
     }
   }
+
+  const executionTime = Date.now() - startTime;
+  await performanceMonitor.logAgentPerformance({
+    agentName: 'vision_analysis_agent',
+    executionTime,
+    confidence: 0,
+    success: false,
+    errorMessage: 'Maximum retry attempts exceeded'
+  });
 
   throw new Error('Maximum retry attempts exceeded');
 };
