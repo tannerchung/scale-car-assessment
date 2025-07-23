@@ -221,7 +221,8 @@ export class LangGraphAgents {
 
       return {
         damageAssessment: result,
-        confidenceScore: result.damage?.confidence || 0
+        confidenceScore: result.damage?.confidence || 0,
+        currentIteration: state.currentIteration + 1
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
