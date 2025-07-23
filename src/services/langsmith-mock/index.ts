@@ -5,6 +5,11 @@ export { RunTree, convertToDottedOrderFormat, isRunTree } from './run_trees';
 export { traceable } from './traceable';
 export { getCurrentRunTree } from './singletons/traceable';
 
+export function getDefaultProjectName(): string {
+  // Mock implementation - returns a default project name
+  return 'default-project';
+}
+
 class Client {
   constructor(config?: any) {
     // No-op constructor

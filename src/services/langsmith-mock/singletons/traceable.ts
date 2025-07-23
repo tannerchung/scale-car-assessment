@@ -12,3 +12,8 @@ export function traceable<T extends (...args: any[]) => any>(
   // Return the original function without tracing in browser
   return fn;
 }
+
+export function isTraceableFunction(fn: any): boolean {
+  // Mock implementation - always returns false
+  return false;
+}
